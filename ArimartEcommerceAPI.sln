@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{56F5B920-CC08-4DAF-8A9C-2EF670AE5546}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArimartEcommerceAPI.API", "src\ArimartEcommerceAPI.API\ArimartEcommerceAPI.API.csproj", "{E2EB2509-16E3-4361-B837-54704E396D77}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArimartEcommerceAPI.Core", "src\ArimartEcommerceAPI.Core\ArimartEcommerceAPI.Core.csproj", "{F77B5FA0-71C4-4013-83C0-B4FAC8CC1B96}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArimartEcommerceAPI.Infrastructure", "src\ArimartEcommerceAPI.In\ArimartEcommerceAPI.Infrastructure.csproj", "{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArimartEcommerceAPI.Services", "src\ArimartEcommerceAPI.Services\ArimartEcommerceAPI.Services.csproj", "{D30FAC56-F21B-40EC-B223-0C98927D5D91}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E2EB2509-16E3-4361-B837-54704E396D77}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2EB2509-16E3-4361-B837-54704E396D77}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2EB2509-16E3-4361-B837-54704E396D77}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2EB2509-16E3-4361-B837-54704E396D77}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F77B5FA0-71C4-4013-83C0-B4FAC8CC1B96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F77B5FA0-71C4-4013-83C0-B4FAC8CC1B96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F77B5FA0-71C4-4013-83C0-B4FAC8CC1B96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F77B5FA0-71C4-4013-83C0-B4FAC8CC1B96}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D30FAC56-F21B-40EC-B223-0C98927D5D91}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D30FAC56-F21B-40EC-B223-0C98927D5D91}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D30FAC56-F21B-40EC-B223-0C98927D5D91}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D30FAC56-F21B-40EC-B223-0C98927D5D91}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E2EB2509-16E3-4361-B837-54704E396D77} = {56F5B920-CC08-4DAF-8A9C-2EF670AE5546}
+		{F77B5FA0-71C4-4013-83C0-B4FAC8CC1B96} = {56F5B920-CC08-4DAF-8A9C-2EF670AE5546}
+		{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C} = {56F5B920-CC08-4DAF-8A9C-2EF670AE5546}
+		{D30FAC56-F21B-40EC-B223-0C98927D5D91} = {56F5B920-CC08-4DAF-8A9C-2EF670AE5546}
+	EndGlobalSection
+EndGlobal

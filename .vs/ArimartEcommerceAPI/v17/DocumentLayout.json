@@ -1,0 +1,245 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|solutionrelative:src\\arimartecommerceapi.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|solutionrelative:src\\arimartecommerceapi.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D30FAC56-F21B-40EC-B223-0C98927D5D91}|src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.services\\otpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D30FAC56-F21B-40EC-B223-0C98927D5D91}|src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj|solutionrelative:src\\arimartecommerceapi.services\\otpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.api\\contollers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|solutionrelative:src\\arimartecommerceapi.api\\contollers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C}|src\\ArimartEcommerceAPI.In\\ArimartEcommerceAPI.Infrastructure.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.in\\data\\models\\product.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C}|src\\ArimartEcommerceAPI.In\\ArimartEcommerceAPI.Infrastructure.csproj|solutionrelative:src\\arimartecommerceapi.in\\data\\models\\product.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.api\\contollers\\productscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|solutionrelative:src\\arimartecommerceapi.api\\contollers\\productscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C}|src\\ArimartEcommerceAPI.In\\ArimartEcommerceAPI.Infrastructure.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.in\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A484F2B2-A646-47AE-A9C0-8E7A5A64B32C}|src\\ArimartEcommerceAPI.In\\ArimartEcommerceAPI.Infrastructure.csproj|solutionrelative:src\\arimartecommerceapi.in\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.api\\middleware\\apikeymiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|solutionrelative:src\\arimartecommerceapi.api\\middleware\\apikeymiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D30FAC56-F21B-40EC-B223-0C98927D5D91}|src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.services\\interfaces\\iotpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D30FAC56-F21B-40EC-B223-0C98927D5D91}|src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj|solutionrelative:src\\arimartecommerceapi.services\\interfaces\\iotpservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|solutionrelative:src\\arimartecommerceapi.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.api\\arimartecommerceapi.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{E2EB2509-16E3-4361-B837-54704E396D77}|src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj|solutionrelative:src\\arimartecommerceapi.api\\arimartecommerceapi.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D30FAC56-F21B-40EC-B223-0C98927D5D91}|src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.services\\interfaces\\itokenservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D30FAC56-F21B-40EC-B223-0C98927D5D91}|src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj|solutionrelative:src\\arimartecommerceapi.services\\interfaces\\itokenservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D30FAC56-F21B-40EC-B223-0C98927D5D91}|src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj|c:\\users\\asus\\source\\repos\\ktechsoftware\\arimartwebapi\\src\\arimartecommerceapi.services\\tokenservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D30FAC56-F21B-40EC-B223-0C98927D5D91}|src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj|solutionrelative:src\\arimartecommerceapi.services\\tokenservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{0ad07096-bba9-4900-a651-0598d26f6d24}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "ApplicationDbContext.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.In\\Data\\ApplicationDbContext.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.In\\Data\\ApplicationDbContext.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.In\\Data\\ApplicationDbContext.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.In\\Data\\ApplicationDbContext.cs",
+              "ViewState": "AgIAABQAAAAAAAAAAAAwwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T15:58:20.434Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Product.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.In\\Data\\Models\\Product.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.In\\Data\\Models\\Product.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.In\\Data\\Models\\Product.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.In\\Data\\Models\\Product.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAowCUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T15:57:05.444Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\appsettings.json",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.API\\appsettings.json",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\appsettings.json",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.API\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-06-27T15:16:23.429Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Program.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.API\\Program.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Program.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.API\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADsAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T15:04:37.263Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "ArimartEcommerceAPI.API",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.API\\ArimartEcommerceAPI.API.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-06-27T15:01:58.904Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Contollers\\AuthController.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.API\\Contollers\\AuthController.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Contollers\\AuthController.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.API\\Contollers\\AuthController.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAqwDwAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T14:41:19.184Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "OTPService.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\OTPService.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.Services\\OTPService.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\OTPService.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.Services\\OTPService.cs",
+              "ViewState": "AgIAAIwAAAAAAAAAAAAAAKkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T14:44:46.849Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ProductsController.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Contollers\\ProductsController.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.API\\Contollers\\ProductsController.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Contollers\\ProductsController.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.API\\Contollers\\ProductsController.cs",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAQwCAAAAAYAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T15:59:12.121Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "ApiKeyMiddleware.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Middleware\\ApiKeyMiddleware.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.API\\Middleware\\ApiKeyMiddleware.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Middleware\\ApiKeyMiddleware.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.API\\Middleware\\ApiKeyMiddleware.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T15:01:26.66Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "IOTPService.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\Interfaces\\IOTPService.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.Services\\Interfaces\\IOTPService.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\Interfaces\\IOTPService.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.Services\\Interfaces\\IOTPService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T14:44:50.248Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.API\\Properties\\launchSettings.json",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.API\\Properties\\launchSettings.json",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.API\\Properties\\launchSettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-06-27T15:07:42.905Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "ITokenService.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\Interfaces\\ITokenService.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.Services\\Interfaces\\ITokenService.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\Interfaces\\ITokenService.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.Services\\Interfaces\\ITokenService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T14:43:21.531Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "TokenService.cs",
+              "DocumentMoniker": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\TokenService.cs",
+              "RelativeDocumentMoniker": "src\\ArimartEcommerceAPI.Services\\TokenService.cs",
+              "ToolTip": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\TokenService.cs",
+              "RelativeToolTip": "src\\ArimartEcommerceAPI.Services\\TokenService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAzAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T14:43:19.143Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

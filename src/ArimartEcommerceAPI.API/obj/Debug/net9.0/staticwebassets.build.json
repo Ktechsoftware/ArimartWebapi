@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "LInD3xOuUDmGavME4xnJnc300Gm9EWc/brpnvWgFcLo=",
+  "Source": "ArimartEcommerceAPI.API",
+  "BasePath": "_content/ArimartEcommerceAPI.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

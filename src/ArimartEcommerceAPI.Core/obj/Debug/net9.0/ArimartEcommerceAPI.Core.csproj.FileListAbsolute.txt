@@ -1,0 +1,12 @@
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\bin\Debug\net9.0\ArimartEcommerceAPI.Core.deps.json
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\bin\Debug\net9.0\ArimartEcommerceAPI.Core.dll
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\bin\Debug\net9.0\ArimartEcommerceAPI.Core.pdb
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\obj\Debug\net9.0\ArimartEcommerceAPI.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\obj\Debug\net9.0\ArimartEcommerceAPI.Core.AssemblyInfoInputs.cache
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\obj\Debug\net9.0\ArimartEcommerceAPI.Core.AssemblyInfo.cs
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\obj\Debug\net9.0\ArimartEcommerceAPI.Core.csproj.CoreCompileInputs.cache
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\obj\Debug\net9.0\ArimartEcommerceAPI.Core.sourcelink.json
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\obj\Debug\net9.0\ArimartEcommerceAPI.Core.dll
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\obj\Debug\net9.0\refint\ArimartEcommerceAPI.Core.dll
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\obj\Debug\net9.0\ArimartEcommerceAPI.Core.pdb
+C:\Users\asus\source\repos\Ktechsoftware\ArimartWebapi\src\ArimartEcommerceAPI.Core\obj\Debug\net9.0\ref\ArimartEcommerceAPI.Core.dll
