@@ -51,12 +51,13 @@ namespace ArimartEcommerceAPI.Services
                 string message = $"Arimart: Your OTP for verification is: {otp}. Valid for {OTP_EXPIRY_MINUTES} minutes.";
 
                 // Get API key from configuration
-                string? apiKey = _configuration["Fast2SMS:ApiKey"];
+                //string? apiKey = _configuration["Fast2SMS:ApiKey"];
+                string? apiKey = "WhH3ity1CkzLa9Kcw86YRQorXjflebDJuNx7gOUSBMEsZq54AIuAYqd6ExS1czQylIsoOCrZtR5jHLpU";
                 if (string.IsNullOrEmpty(apiKey))
                 {
-                    _logger.LogError("Fast2SMS API key not configured");
-                    return null;
+                    throw new InvalidOperationException("Fast2SMS API key not configured.");
                 }
+
 
                 string url = $"https://www.fast2sms.com/dev/bulkV2?authorization={apiKey}&message={Uri.EscapeDataString(message)}&language=english&route=q&numbers={mobileNumber}";
 

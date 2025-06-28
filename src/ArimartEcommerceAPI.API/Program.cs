@@ -64,7 +64,7 @@ var app = builder.Build();
 // Enable Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
-app.MapControllers(); // this enables [ApiController] routing
+app.MapControllers();
 
 // app.UseHttpsRedirection();
 app.UseMiddleware<ApiKeyMiddleware>();

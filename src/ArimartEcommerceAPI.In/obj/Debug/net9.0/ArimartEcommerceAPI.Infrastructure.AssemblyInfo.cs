@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ArimartEcommerceAPI.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f939b773f2c3658c5e2c21d8d450f56d78255340")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dd0c06506d04074f47a7e72353e556e9413b8ab8")]
 [assembly: System.Reflection.AssemblyProductAttribute("ArimartEcommerceAPI.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ArimartEcommerceAPI.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

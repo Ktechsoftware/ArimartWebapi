@@ -41,5 +41,53 @@ namespace ArimartEcommerceAPI.Controllers
 
             return product;
         }
+
+        // GET: api/products/search?query=radish
+        [AllowAnonymous]
+        [HttpGet("search")]
+        public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return BadRequest(new { message = "Search query is required." });
+
+            var results = await _context.Products
+                .Where(p => 
+                    p.PName.ToLower().Contains(query.ToLower()) ||
+                    p.PDesc.ToLower().Contains(query.ToLower()) ||
+                    p.PPros.ToLower().Contains(query.ToLower()))
+                .ToListAsync();
+
+            return Ok(results);
+        }
+
+        // GET: api/products/names
+        [AllowAnonymous]
+        [HttpGet("names")]
+        public async Task<ActionResult<IEnumerable<string>>> GetProductNames([FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                // Return first 10 names if query is empty (optional)
+                var defaultNames = await _context.Products
+                    .Where(p => !string.IsNullOrEmpty(p.PName))
+                    .OrderBy(p => p.PName)
+                    .Select(p => p.PName)
+                    .Take(10)
+                    .ToListAsync();
+
+                return Ok(defaultNames);
+            }
+
+            var productNames = await _context.Products
+                .Where(p => !string.IsNullOrEmpty(p.PName) &&
+                            p.PName.ToLower().Contains(query.ToLower()))
+                .OrderBy(p => p.PName)
+                .Select(p => p.PName)
+                .Take(15) 
+                .ToListAsync();
+
+            return Ok(productNames);
+        }
+
     }
 }
