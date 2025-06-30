@@ -42,5 +42,17 @@ namespace ArimartEcommerceAPI.Controllers
 
             return category;
         }
+
+        // POST: api/category
+        [HttpPost]
+        public async Task<ActionResult<TblCategory>> AddCategory(TblCategory category)
+        {
+            category.AddedDate = DateTime.UtcNow;
+            category.IsDeleted = false;
+            _context.TblCategories.Add(category);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, category);
+        }
     }
 }
