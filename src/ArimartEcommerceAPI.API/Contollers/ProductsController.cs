@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ArimartEcommerceAPI.Controllers
@@ -23,18 +24,21 @@ namespace ArimartEcommerceAPI.Controllers
         // GET: api/products
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+        public async Task<ActionResult<IEnumerable<VwProduct>>> GetProducts()
         {
-            return await _context.Products.ToListAsync();
+            return await _context.VwProducts
+                .Where(p => p.IsDeleted == false && p.IsActive == true)
+                .OrderByDescending(p => p.AddedDate)
+                .ToListAsync();
         }
-
 
         // GET: api/products/{id}
         [AllowAnonymous]
         [HttpGet("{id}")]
-        public async Task<ActionResult<Product>> GetProduct(int id)
+        public async Task<ActionResult<VwProduct>> GetProduct(long id)
         {
-            var product = await _context.Products.FindAsync(id);
+            var product = await _context.VwProducts
+                .FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted == false && p.IsActive == true);
 
             if (product == null)
                 return NotFound();
@@ -45,49 +49,52 @@ namespace ArimartEcommerceAPI.Controllers
         // GET: api/products/search?query=radish
         [AllowAnonymous]
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string query)
+        public async Task<ActionResult<IEnumerable<VwProduct>>> SearchProducts([FromQuery] string query)
         {
             if (string.IsNullOrWhiteSpace(query))
                 return BadRequest(new { message = "Search query is required." });
 
-            var results = await _context.Products
-                .Where(p => 
-                    p.PName.ToLower().Contains(query.ToLower()) ||
-                    p.PDesc.ToLower().Contains(query.ToLower()) ||
-                    p.PPros.ToLower().Contains(query.ToLower()))
+            var results = await _context.VwProducts
+                .Where(p => !p.IsDeleted && p.IsActive == true &&
+                    (
+                        (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.ToLower().Contains(query.ToLower())) ||
+                        (!string.IsNullOrEmpty(p.Shortdesc) && p.Shortdesc.ToLower().Contains(query.ToLower())) ||
+                        (!string.IsNullOrEmpty(p.PPros) && p.PPros.ToLower().Contains(query.ToLower()))
+                    ))
+                .OrderByDescending(p => p.AddedDate)
                 .ToListAsync();
+
 
             return Ok(results);
         }
 
-        // GET: api/products/names
+        // GET: api/products/names?query=veg
         [AllowAnonymous]
         [HttpGet("names")]
         public async Task<ActionResult<IEnumerable<string>>> GetProductNames([FromQuery] string query)
         {
             if (string.IsNullOrWhiteSpace(query))
             {
-                // Return first 10 names if query is empty (optional)
-                var defaultNames = await _context.Products
-                    .Where(p => !string.IsNullOrEmpty(p.PName))
-                    .OrderBy(p => p.PName)
-                    .Select(p => p.PName)
+                var defaultNames = await _context.VwProducts
+                    .Where(p => !p.IsDeleted && p.IsActive == true && !string.IsNullOrEmpty(p.ProductName))
+                    .OrderBy(p => p.ProductName)
+                    .Select(p => p.ProductName)
                     .Take(10)
                     .ToListAsync();
 
                 return Ok(defaultNames);
             }
 
-            var productNames = await _context.Products
-                .Where(p => !string.IsNullOrEmpty(p.PName) &&
-                            p.PName.ToLower().Contains(query.ToLower()))
-                .OrderBy(p => p.PName)
-                .Select(p => p.PName)
-                .Take(15) 
+            var productNames = await _context.VwProducts
+                .Where(p => !p.IsDeleted && p.IsActive == true &&
+                            !string.IsNullOrEmpty(p.ProductName) &&
+                            p.ProductName.ToLower().Contains(query.ToLower()))
+                .OrderBy(p => p.ProductName)
+                .Select(p => p.ProductName)
+                .Take(15)
                 .ToListAsync();
 
             return Ok(productNames);
         }
-
     }
 }

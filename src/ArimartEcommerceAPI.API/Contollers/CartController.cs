@@ -128,4 +128,88 @@ public class CartController : ControllerBase
         return Ok(cartItems);
     }
 
+    // Additional methods to add to your CartController.cs
+
+    [HttpPut("{cartItemId}")]
+    public async Task<IActionResult> UpdateCartItemQuantity(int cartItemId, [FromBody] UpdateQuantityRequest request)
+    {
+        if (request.Quantity <= 0)
+            return BadRequest(new { message = "Quantity must be greater than zero" });
+
+        var cartItem = await _context.TblAddcarts.FirstOrDefaultAsync(c =>
+            c.Id == cartItemId && !c.IsDeleted);
+
+        if (cartItem == null)
+            return NotFound(new { message = "Cart item not found" });
+
+        cartItem.Qty = request.Quantity;
+        cartItem.ModifiedDate = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Cart item quantity updated successfully" });
+    }
+
+    [HttpDelete("{cartItemId}")]
+    public async Task<IActionResult> RemoveFromCart(int cartItemId)
+    {
+        var cartItem = await _context.TblAddcarts.FirstOrDefaultAsync(c =>
+            c.Id == cartItemId && !c.IsDeleted);
+
+        if (cartItem == null)
+            return NotFound(new { message = "Cart item not found" });
+
+        // Soft delete
+        cartItem.IsDeleted = true;
+        cartItem.ModifiedDate = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Item removed from cart successfully" });
+    }
+
+    [HttpDelete("user/{userId}")]
+    public async Task<IActionResult> ClearCartByUserId(int userId)
+    {
+        var cartItems = await _context.TblAddcarts
+            .Where(c => c.Userid == userId && !c.IsDeleted)
+            .ToListAsync();
+
+        if (cartItems.Count == 0)
+            return NotFound(new { message = "No cart items found for this user" });
+
+        foreach (var item in cartItems)
+        {
+            item.IsDeleted = true;
+            item.ModifiedDate = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Cart cleared successfully" });
+    }
+
+    [HttpGet("count/user/{userId}")]
+    public async Task<IActionResult> GetCartItemCount(int userId)
+    {
+        var count = await _context.TblAddcarts
+            .Where(c => c.Userid == userId && !c.IsDeleted)
+            .SumAsync(c => c.Qty);
+
+        return Ok(new { count });
+    }
+
+    // DTO classes to add to your DTO folder
+    public class UpdateQuantityRequest
+    {
+        public int Quantity { get; set; }
+    }
+
+    public class CartSummaryResponse
+    {
+        public int TotalItems { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal Total { get; set; }
+        public List<object> Items { get; set; }
+    }
 }

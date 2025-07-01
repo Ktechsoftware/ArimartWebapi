@@ -47,5 +47,6 @@ namespace ArimartEcommerceAPI.Controllers
             return Ok(detail);
         }
 
+
     }
 }
