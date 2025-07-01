@@ -40,16 +40,5 @@ namespace ArimartEcommerceAPI.Controllers
                 .ToListAsync();
         }
 
-        // POST: api/subcategory
-        [HttpPost]
-        public async Task<ActionResult<TblSubcategory>> AddSubcategory(TblSubcategory subcategory)
-        {
-            subcategory.AddedDate = DateTime.UtcNow;
-            subcategory.IsDeleted = false;
-            _context.TblSubcategories.Add(subcategory);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetSubcategories), new { id = subcategory.Id }, subcategory);
-        }
     }
 }

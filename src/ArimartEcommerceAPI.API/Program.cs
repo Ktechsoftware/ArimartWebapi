@@ -59,16 +59,22 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IOTPService, OTPService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 var app = builder.Build();
-
-// Enable Swagger
+app.UseRouting();
+app.UseCors("AllowAll");
 app.UseSwagger();
 app.UseSwaggerUI();
-app.MapControllers();
-
-// app.UseHttpsRedirection();
-app.UseMiddleware<ApiKeyMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseMiddleware<ApiKeyMiddleware>();
+app.MapControllers();
 app.Run();
