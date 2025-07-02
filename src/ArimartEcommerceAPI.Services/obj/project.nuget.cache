@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "EZDfBPJljKI=",
+  "dgSpecHash": "HaqiREgVrHk=",
   "success": true,
-  "projectFilePath": "C:\\Users\\asus\\source\\repos\\Ktechsoftware\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj",
+  "projectFilePath": "E:\\yogesh jeetart projects\\ArimartWebapi\\src\\ArimartEcommerceAPI.Services\\ArimartEcommerceAPI.Services.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\asus\\.nuget\\packages\\automapper\\14.0.0\\automapper.14.0.0.nupkg.sha512",
     "C:\\Users\\asus\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",

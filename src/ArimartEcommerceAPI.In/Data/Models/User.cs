@@ -5,7 +5,7 @@ namespace ArimartEcommerceAPI.Infrastructure.Data.Models;
 
 public partial class User
 {
-    public int UserId { get; set; }
+    public long UserId { get; set; }
 
     public string FullName { get; set; } = null!;
 

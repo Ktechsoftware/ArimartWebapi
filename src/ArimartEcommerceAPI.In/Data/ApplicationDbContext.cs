@@ -846,9 +846,8 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("users");
+            entity.HasKey(e => e.UserId);
+            entity.ToTable("users");
 
             entity.Property(e => e.AtDate)
                 .HasMaxLength(30)

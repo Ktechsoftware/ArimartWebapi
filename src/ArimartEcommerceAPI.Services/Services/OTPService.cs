@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ArimartEcommerceAPI.Infrastructure.Data;
 
-namespace ArimartEcommerceAPI.Services
+namespace ArimartEcommerceAPI.Services.Services
 {
     public class OTPService : IOTPService
     {

@@ -21,7 +21,7 @@ public class ApiKeyMiddleware
             await _next(context);
             return;
         }
-
+        
         // Skip API key check for Swagger UI
         if (context.Request.Path.StartsWithSegments("/swagger") ||
             context.Request.Path.StartsWithSegments("/api-docs"))

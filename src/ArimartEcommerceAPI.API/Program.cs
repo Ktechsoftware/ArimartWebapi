@@ -1,9 +1,9 @@
-using ArimartEcommerceAPI.Services;
 using Microsoft.OpenApi.Models;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ArimartEcommerceAPI.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using ArimartEcommerceAPI.Services.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
@@ -56,7 +56,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<IOTPService, OTPService>();
+builder.Services.AddSingleton<IOTPService, MockOTPService>();
+//builder.Services.AddScoped<IOTPService, OTPService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
 builder.Services.AddCors(options =>
@@ -69,12 +70,13 @@ builder.Services.AddCors(options =>
     });
 });
 var app = builder.Build();
+
 app.UseRouting();
 app.UseCors("AllowAll");
 app.UseSwagger();
 app.UseSwaggerUI();
+app.UseMiddleware<ApiKeyMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseMiddleware<ApiKeyMiddleware>();
 app.MapControllers();
 app.Run();

@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using ArimartEcommerceAPI.Infrastructure.Data.Models;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
@@ -21,58 +23,94 @@ public class AuthController : ControllerBase
         _otpService = otpService;
     }
 
-    [HttpPost("send-otp")]
-    [AllowAnonymous]
-    public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
+   [HttpPost("send-otp")]
+[AllowAnonymous]
+public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
+{
+    Console.WriteLine($"[DEBUG] SendOtp called with: {request?.MobileNumber}");
+    Console.WriteLine($"[DEBUG] OTP Service Instance: {_otpService.GetHashCode()}");
+    
+    if (request == null || string.IsNullOrWhiteSpace(request.MobileNumber))
+        return BadRequest(new { message = "Mobile number is required." });
+
+    if (!IsValidMobileNumber(request.MobileNumber))
+        return BadRequest(new { message = "Invalid mobile number format." });
+
+    try
     {
-        if (request == null || string.IsNullOrWhiteSpace(request.MobileNumber))
-            return BadRequest(new { message = "Mobile number is required." });
-
-        // Validate mobile number format
-        if (!IsValidMobileNumber(request.MobileNumber))
-            return BadRequest(new { message = "Invalid mobile number format." });
-
-        try
+        var otp = await _otpService.SendOTPAsync(request.MobileNumber);
+        
+        // Add debug check
+        if (_otpService is MockOTPService mockService)
         {
-            var otp = await _otpService.SendOTPAsync(request.MobileNumber);
-            if (otp != null)
-            {
-                return Ok(new { message = "OTP sent successfully." });
-            }
-            else
-            {
-                return StatusCode(500, new { message = "Failed to send OTP." });
-            }
+            var currentOtps = mockService.GetCurrentOtps();
+            Console.WriteLine($"[DEBUG] OTPs in store after send: {currentOtps.Count}");
         }
-        catch (Exception ex)
+        
+        if (otp != null)
         {
-            // Log the exception
-            return StatusCode(500, new { message = "An error occurred while sending OTP.", error = ex.Message, details = ex.StackTrace });
+            return Ok(new { message = "OTP sent successfully." });
+        }
+        else
+        {
+            return StatusCode(500, new { message = "Failed to send OTP." });
         }
     }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { message = "An error occurred while sending OTP.", error = ex.Message, details = ex.StackTrace });
+    }
+}
 
     [HttpPost("verify-otp")]
     [AllowAnonymous]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
     {
+        Console.WriteLine("[DEBUG] === VERIFY OTP REQUEST RECEIVED ===");
+        Console.WriteLine($"[DEBUG] Request: {System.Text.Json.JsonSerializer.Serialize(request)}");
+        Console.WriteLine($"[DEBUG] Headers: {string.Join(", ", Request.Headers.Select(h => $"{h.Key}={h.Value}"))}");
+
         if (request == null || string.IsNullOrWhiteSpace(request.MobileNumber) || string.IsNullOrWhiteSpace(request.OTP))
+        {
+            Console.WriteLine("[DEBUG] Invalid request data");
             return BadRequest(new { message = "Mobile number and OTP are required." });
+        }
 
         try
         {
-            var isValid = await _otpService.VerifyOTPAsync(request.MobileNumber, request.OTP);
-            if (!isValid)
-                return Unauthorized(new { message = "Invalid or expired OTP." });
+            Console.WriteLine($"[DEBUG] Mobile: {request.MobileNumber}, OTP: {request.OTP}");
+            Console.WriteLine($"[DEBUG] OTP Service Type: {_otpService.GetType().Name}");
 
-            // Use async query for better performance
+            var isValid = await _otpService.VerifyOTPAsync(request.MobileNumber, request.OTP);
+
+            Console.WriteLine($"[DEBUG] OTP Verification Result: {isValid}");
+
+            if (!isValid)
+            {
+                Console.WriteLine("[DEBUG] OTP verification failed - returning 401");
+                return Unauthorized(new
+                {
+                    message = "Invalid or expired OTP.",
+                    debug = new
+                    {
+                        serviceType = _otpService.GetType().Name,
+                        mobileNumber = request.MobileNumber,
+                        receivedOtp = request.OTP,
+                        timestamp = DateTime.Now
+                    }
+                });
+            }
+
+            Console.WriteLine("[DEBUG] OTP verified successfully - checking user");
+
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.UserContact == request.MobileNumber);
 
             if (user != null)
             {
+                Console.WriteLine($"[DEBUG] User found: {user.FullName}");
                 var token = _tokenService?.CreateToken(user);
 
-                // Create user data for cookie
                 var userData = new UserCookieData
                 {
                     UserId = user.UserId,
@@ -80,9 +118,6 @@ public class AuthController : ControllerBase
                     UserContact = user.UserContact,
                     Email = user.UserEmail
                 };
-
-                // Set secure cookie
-                SetUserDataCookie(userData);
 
                 return Ok(new
                 {
@@ -98,57 +133,141 @@ public class AuthController : ControllerBase
                 });
             }
 
+            Console.WriteLine("[DEBUG] User not found - requires registration");
             return Ok(new
             {
                 message = "User not found. Please complete registration.",
-                requiresRegistration = true
+                requiresRegistration = true,
+                mobileNumber = request.MobileNumber
             });
         }
         catch (Exception ex)
         {
-            // Log the exception
-            return StatusCode(500, new { message = "An error occurred during verification." });
+            Console.WriteLine($"[DEBUG] Exception in VerifyOtp: {ex}");
+            return StatusCode(500, new { message = "An error occurred during verification.", error = ex.Message });
         }
     }
 
+    [HttpPost("register-user")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RegisterUser([FromBody] RegisterUserRequest request)
+    {
+        Console.WriteLine("[DEBUG] === REGISTER USER REQUEST RECEIVED ===");
+        Console.WriteLine($"[DEBUG] Request: {System.Text.Json.JsonSerializer.Serialize(request)}");
+
+        if (request == null || string.IsNullOrWhiteSpace(request.FullName) ||
+            string.IsNullOrWhiteSpace(request.UserEmail) || string.IsNullOrWhiteSpace(request.MobileNumber))
+        {
+            Console.WriteLine("[DEBUG] Invalid registration request data");
+            return BadRequest(new { message = "Full name, email, and mobile number are required." });
+        }
+
+        try
+        {
+            // Check if user already exists with this mobile number
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserContact == request.MobileNumber);
+
+            if (existingUser != null)
+            {
+                Console.WriteLine("[DEBUG] User already exists with this mobile number");
+                return BadRequest(new { message = "User already exists with this mobile number." });
+            }
+
+            // Check if email is already in use
+            var existingEmailUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserEmail == request.UserEmail);
+
+            if (existingEmailUser != null)
+            {
+                Console.WriteLine("[DEBUG] Email already in use");
+                return BadRequest(new { message = "Email is already in use." });
+            }
+
+            // Create new user (assuming you have a User entity)
+            var newUser = new User
+            {
+                FullName = request.FullName.Trim(),
+                UserContact = request.MobileNumber,
+                UserEmail = request.UserEmail.Trim().ToLower()
+            };
+
+            _context.Users.Add(newUser);
+            await _context.SaveChangesAsync();
+
+            Console.WriteLine($"[DEBUG] User registered successfully with ID: {newUser.UserId}");
+
+            // Generate token for the new user
+            var token = _tokenService?.CreateToken(newUser);
+
+            return Ok(new
+            {
+                token,
+                user = new
+                {
+                    id = newUser.UserId,
+                    fullName = newUser.FullName,
+                    userContact = newUser.UserContact,
+                    email = newUser.UserEmail
+                },
+                message = "User registered successfully."
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] Exception in RegisterUser: {ex}");
+            return StatusCode(500, new { message = "An error occurred during registration.", error = ex.Message });
+        }
+    }
+
+    [HttpGet("debug/otp-store")]
+    [AllowAnonymous]
+    public IActionResult GetOtpStore()
+    {
+        if (_otpService is MockOTPService mockService)
+        {
+            var otps = mockService.GetCurrentOtps();
+            return Ok(new
+            {
+                message = "Current OTP store",
+                otps = otps.ToDictionary(kvp => kvp.Key, kvp => new {
+                    otp = kvp.Value.Otp,
+                    createdAt = kvp.Value.CreatedAt,
+                    expiresAt = kvp.Value.ExpiresAt,
+                    isExpired = DateTime.Now > kvp.Value.ExpiresAt
+                })
+            });
+        }
+        return Ok(new { message = "Not using MockOTPService" });
+    }
+
     [HttpPost("logout")]
-    [Authorize]
     public IActionResult Logout()
     {
-        // Clear the user data cookie
-        ClearUserDataCookie();
         return Ok(new { message = "Logged out successfully." });
     }
 
-    [HttpGet("user-info")]
-    [Authorize]
-    public async Task<IActionResult> GetUserInfo()
-    {
+    [HttpGet("user-info/{userId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetUserInfoById(int userId)
+        {
         try
         {
-            // Get user data from cookie
-            var userData = GetUserDataFromCookie();
-            if (userData == null)
-            {
-                return Unauthorized(new { message = "User session not found." });
-            }
-
-            // Optionally verify user still exists in database
+            // Get user from database
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.UserId == userData.UserId);
+                .FirstOrDefaultAsync(u => u.UserId == userId);
 
             if (user == null)
             {
-                ClearUserDataCookie();
                 return Unauthorized(new { message = "User not found." });
             }
 
             return Ok(new
             {
-                userId = userData.UserId,
-                fullName = userData.FullName,
-                userContact = userData.UserContact,
-                email = userData.Email
+                userId = user.UserId,
+                fullName = user.FullName,
+                userContact = user.UserContact,
+                email = user.UserEmail
             });
         }
         catch (Exception ex)
@@ -157,55 +276,11 @@ public class AuthController : ControllerBase
         }
     }
 
-    // Helper methods for cookie management
-    private void SetUserDataCookie(UserCookieData userData)
-    {
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true, // Prevents XSS attacks
-            Secure = true,   // Only send over HTTPS
-            SameSite = SameSiteMode.Strict, // CSRF protection
-            Expires = DateTimeOffset.UtcNow.AddDays(30) // 30 days expiration
-        };
-
-        var userDataJson = JsonSerializer.Serialize(userData);
-        Response.Cookies.Append("arimartuserdata", userDataJson, cookieOptions);
-    }
-
-    private UserCookieData? GetUserDataFromCookie()
-    {
-        if (Request.Cookies.TryGetValue("arimartuserdata", out var cookieValue))
-        {
-            try
-            {
-                return JsonSerializer.Deserialize<UserCookieData>(cookieValue);
-            }
-            catch (JsonException)
-            {
-                // Invalid JSON in cookie, clear it
-                ClearUserDataCookie();
-                return null;
-            }
-        }
-        return null;
-    }
-
-    private void ClearUserDataCookie()
-    {
-        Response.Cookies.Delete("arimartuserdata");
-    }
-
     private bool IsValidMobileNumber(string mobileNumber)
     {
-        // Add your mobile number validation logic here
-        // Example for Indian mobile numbers (10 digits starting with 6-9)
         if (string.IsNullOrWhiteSpace(mobileNumber))
             return false;
-
-        // Remove any spaces or special characters
         var cleanNumber = mobileNumber.Replace(" ", "").Replace("-", "").Replace("+", "");
-
-        // Check if it's a valid Indian mobile number (example)
         return cleanNumber.Length == 10 &&
                cleanNumber.All(char.IsDigit) &&
                "6789".Contains(cleanNumber[0]);
@@ -227,8 +302,15 @@ public class VerifyOtpRequest
 // Cookie data model
 public class UserCookieData
 {
-    public int UserId { get; set; }
+    public long UserId { get; set; }
     public string? FullName { get; set; }
     public string? UserContact { get; set; }
     public string? Email { get; set; }
+}
+
+public class RegisterUserRequest
+{
+    public string? FullName { get; set; }
+    public string? UserEmail { get; set; }
+    public string? MobileNumber { get; set; }
 }

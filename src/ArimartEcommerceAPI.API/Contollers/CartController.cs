@@ -63,7 +63,7 @@ public class CartController : ControllerBase
 
         var result = items.Select(c => new
         {
-            id = c.Id,
+            id = c.Aid,
             name = c.ProductName,
             price = decimal.TryParse(c.Netprice, out var p) ? p : 0,
             image = c.Image,
