@@ -47,10 +47,7 @@ public class OrderController : ControllerBase
                 Userid = request.Userid,
                 Sipid = int.TryParse(request.Sipid, out var sipid) ? sipid : (int?)null,
                 Groupid = c.Groupid,
-                Deliveryprice = c.Price,
-                AddedDate = DateTime.UtcNow,
-                IsDeleted = false,
-                IsActive = true
+                Deliveryprice = c.Price
             }).ToList();
 
             await _context.TblOrdernows.AddRangeAsync(newOrders);
@@ -95,10 +92,7 @@ public class OrderController : ControllerBase
             Pdid = request.Pdid,
             Userid = request.Userid,
             Groupid = null, // This is a normal order
-            Deliveryprice = request.Deliveryprice,
-            AddedDate = DateTime.UtcNow,
-            IsDeleted = false,
-            IsActive = true
+            Deliveryprice = request.Deliveryprice
         };
 
         await _context.TblOrdernows.AddAsync(order);
@@ -125,9 +119,6 @@ public class OrderController : ControllerBase
             Userid = request.Userid,
             Groupid = request.Groupid,
             Deliveryprice = request.Deliveryprice,
-            AddedDate = DateTime.UtcNow,
-            IsDeleted = false,
-            IsActive = true
         };
 
         await _context.TblOrdernows.AddAsync(order);
@@ -139,9 +130,9 @@ public class OrderController : ControllerBase
     [HttpGet("history/{userid}")]
     public async Task<IActionResult> GetOrderHistory(int userid)
     {
-        var orders = await _context.VwOrders
+        var orders = await _context.TblOrdernows
             .Where(o => o.Userid == userid && o.IsDeleted == false)
-            .OrderByDescending(o => o.Orderdate)
+            .OrderByDescending(o => o.AddedDate)
             .ToListAsync();
 
         return Ok(orders);
@@ -151,11 +142,58 @@ public class OrderController : ControllerBase
     [HttpGet("history/{userid}/{groupid}")]
     public async Task<IActionResult> GetGroupOrderHistory(int userid, long groupid)
     {
-        var orders = await _context.VwOrders
+        var orders = await _context.TblOrdernows
             .Where(o => o.Userid == userid && o.Groupid == groupid && o.IsDeleted == false)
-            .OrderByDescending(o => o.Orderdate)
+            .OrderByDescending(o => o.AddedDate)
             .ToListAsync();
 
         return Ok(orders);
     }
+
+
+
+    [HttpGet("track/{orderid}")]
+    public async Task<IActionResult> TrackOrder(long orderid)
+    {
+        var order = await _context.TblOrdernows
+            .Where(o => o.Id == orderid && !o.IsDeleted)
+            .Select(o => new
+            {
+                o.Id,
+                o.Pid,
+                o.Qty,
+                o.AddedDate,
+                o.DassignidTime,
+                o.DvendorpickupTime,
+                o.ShipOrderidTime,
+                o.DdeliverredidTime,
+                o.DuserassginidTime,
+                Status = o.DdeliverredidTime != null ? "Delivered"
+                        : o.ShipOrderidTime != null ? "Shipped"
+                        : o.DvendorpickupTime != null ? "Picked Up"
+                        : o.DassignidTime != null ? "Assigned"
+                        : "Placed"
+            })
+            .FirstOrDefaultAsync();
+
+        if (order == null)
+            return NotFound(new { message = "Order not found." });
+
+        return Ok(order);
+    }
+
+    [HttpDelete("{orderid}")]
+    public async Task<IActionResult> CancelOrder(long orderid)
+    {
+        var order = await _context.TblOrdernows.FirstOrDefaultAsync(o => o.Id == orderid && !o.IsDeleted);
+        if (order == null)
+            return NotFound(new { message = "Order not found or already deleted." });
+
+        order.IsDeleted = true;
+        order.ModifiedDate = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Order cancelled successfully." });
+    }
+
 }
