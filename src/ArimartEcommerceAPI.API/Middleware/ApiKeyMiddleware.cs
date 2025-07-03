@@ -15,7 +15,12 @@ public class ApiKeyMiddleware
 
     public async Task InvokeAsync(HttpContext context, IConfiguration config)
     {
-        // Skip API key check for OPTIONS requests (CORS preflight)
+        var path = context.Request.Path.Value?.ToLower();
+        if (path == "/" || path == "/docs.html")
+        {
+            await _next(context);
+            return;
+        }
         if (context.Request.Method.Equals("OPTIONS", StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);

@@ -1,4 +1,5 @@
-﻿using ArimartEcommerceAPI.Infrastructure.Data;
+﻿using System.Linq;
+using ArimartEcommerceAPI.Infrastructure.Data;
 using ArimartEcommerceAPI.Infrastructure.Data.DTO;
 using ArimartEcommerceAPI.Infrastructure.Data.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,71 @@ public class OrderController : ControllerBase
     public OrderController(ApplicationDbContext context)
     {
         _context = context;
+    }
+
+    [HttpPost("checkout")]
+    public async Task<IActionResult> CheckoutCart([FromBody] CartCheckoutRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Addid))
+            return BadRequest(new { message = "Cart item IDs are required." });
+
+        try
+        {
+            // Parse cart IDs from comma-separated string (now as long)
+            var cartIds = request.Addid
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(id => Convert.ToInt64(id.Trim()))
+                .ToList();
+
+            // Fetch matching cart items with qty > 0
+            var cartItems = await _context.TblAddcarts
+                .Where(c => cartIds.Contains(c.Id) && c.Qty > 0)
+                .ToListAsync();
+
+            if (cartItems.Count == 0)
+                return BadRequest(new { message = "No valid cart items found for checkout." });
+
+            // Map to order entities
+            var newOrders = cartItems.Select(c => new TblOrdernow
+            {
+                Qty = c.Qty,
+                Pid = c.Pid,
+                Pdid = c.Pdid,
+                Userid = request.Userid,
+                Sipid = int.TryParse(request.Sipid, out var sipid) ? sipid : (int?)null,
+                Groupid = c.Groupid,
+                Deliveryprice = c.Price,
+                AddedDate = DateTime.UtcNow,
+                IsDeleted = false,
+                IsActive = true
+            }).ToList();
+
+            await _context.TblOrdernows.AddRangeAsync(newOrders);
+
+            // Update tbl_addcart
+            foreach (var item in cartItems)
+            {
+                if (item.Groupid != null)
+                {
+                    item.IsDeleted = false;
+                    item.Qty = 0;
+                }
+                else
+                {
+                    item.IsDeleted = true;
+                }
+
+                item.ModifiedDate = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Checkout successful." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Checkout failed.", error = ex.Message });
+        }
     }
 
     // POST: api/order/place

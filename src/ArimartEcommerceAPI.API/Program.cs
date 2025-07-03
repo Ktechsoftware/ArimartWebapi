@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ArimartEcommerceAPI.Infrastructure.Data;
@@ -70,7 +70,7 @@ builder.Services.AddCors(options =>
     });
 });
 var app = builder.Build();
-
+app.UseStaticFiles(); // ✅ Serve files from wwwroot
 app.UseRouting();
 app.UseCors("AllowAll");
 app.UseSwagger();
@@ -78,5 +78,10 @@ app.UseSwaggerUI();
 app.UseMiddleware<ApiKeyMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapGet("/", async context =>
+{
+    context.Response.Redirect("/docs.html");
+    await Task.CompletedTask;
+});
 app.MapControllers();
 app.Run();

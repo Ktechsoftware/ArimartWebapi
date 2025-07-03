@@ -15,37 +15,42 @@ public class TokenService : ITokenService
         _configuration = configuration;
     }
 
-    public string CreateToken(User user)
+    public string CreateToken(TblUser user)
     {
         if (user == null) throw new ArgumentNullException(nameof(user));
 
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.UserContact ?? string.Empty),
-            new Claim("UserId", user.UserId.ToString()),
-            new Claim("IsAdmin", user.IsAdmin.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()), // Use Id as immutable user id
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim("phone", user.Phone ?? string.Empty),
+            new Claim(ClaimTypes.Role, user.UserType ?? "User"),
+            new Claim(JwtRegisteredClaimNames.Iat,
+                      DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
+                      ClaimValueTypes.Integer64)
         };
 
-        // Fix: Use "JwtSettings" instead of "Jwt"
         var key = _configuration["JwtSettings:Key"];
         var issuer = _configuration["JwtSettings:Issuer"];
         var audience = _configuration["JwtSettings:Audience"];
+        var days = int.Parse(_configuration["JwtSettings:ExpiresInDays"] ?? "7");
 
-        if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
+        if (string.IsNullOrWhiteSpace(key) ||
+            string.IsNullOrWhiteSpace(issuer) ||
+            string.IsNullOrWhiteSpace(audience))
         {
             throw new InvalidOperationException("JWT configuration values are missing.");
         }
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
-        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+        var creds = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(7),
-            signingCredentials: credentials
+            expires: DateTime.UtcNow.AddDays(days),
+            signingCredentials: creds
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
