@@ -3,22 +3,16 @@ using System.Collections.Generic;
 
 namespace ArimartEcommerceAPI.Infrastructure.Data.Models;
 
-public partial class TblProduct
+public partial class TblChildSubcategory
 {
     public long Id { get; set; }
 
-    public string ProductName { get; set; } = null!;
-
-    public string? Shortdesc { get; set; }
-
-    public string? Longdesc { get; set; }
-
-    public string? Keywords { get; set; }
+    public string ChildcategoryName { get; set; } = null!;
 
     public int? Categoryid { get; set; }
-
     public int? Subcategoryid { get; set; }
-    public int? childcategoryid { get; set; }
+
+    public string? Image { get; set; }
 
     public DateTime AddedDate { get; set; }
 
@@ -27,8 +21,4 @@ public partial class TblProduct
     public DateTime? ModifiedDate { get; set; }
 
     public bool? IsActive { get; set; }
-
-    public int? Userid { get; set; }
-
-    public string? PPros { get; set; }
 }

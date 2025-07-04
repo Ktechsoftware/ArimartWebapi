@@ -18,6 +18,7 @@ public partial class VwProduct
     public int? Categoryid { get; set; }
 
     public int? Subcategoryid { get; set; }
+    public int? ChildCategoryId { get; set; }
 
     public DateTime AddedDate { get; set; }
 
@@ -36,6 +37,7 @@ public partial class VwProduct
     public string? CategoryName { get; set; }
 
     public string? SubcategoryName { get; set; }
+    public string? ChildCategoryName { get; set; }
 
     public string? Image { get; set; }
 

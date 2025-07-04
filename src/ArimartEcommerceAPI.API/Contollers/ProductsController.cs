@@ -141,6 +141,45 @@ namespace ArimartEcommerceAPI.Controllers
 
             return Ok(productNames);
         }
+
+        // GET: api/products/by-childcategory/5?page=1&pageSize=10
+        [AllowAnonymous]
+        [HttpGet("by-childcategory/{childCategoryId}")]
+        public async Task<ActionResult<ProductsResponse>> GetProductsByChildCategory(
+            int childCategoryId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 50) pageSize = 10;
+
+            var query = _context.VwProducts
+               .Where(p => p.ChildCategoryId == childCategoryId && !p.IsDeleted && p.IsActive == true)
+                .OrderByDescending(p => p.AddedDate);
+
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            var products = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var response = new ProductsResponse
+            {
+                Products = products,
+                CurrentPage = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                HasNextPage = page < totalPages,
+                HasPreviousPage = page > 1
+            };
+
+            return Ok(response);
+        }
+
+
     }
 
     // Response model for paginated products

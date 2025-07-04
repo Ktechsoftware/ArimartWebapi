@@ -69,6 +69,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<TblSilder> TblSilders { get; set; }
 
     public virtual DbSet<TblSubcategory> TblSubcategories { get; set; }
+    public virtual DbSet<TblChildSubcategory> TblChildSubcategories { get; set; }
 
     public virtual DbSet<TblUser> TblUsers { get; set; }
 
@@ -604,6 +605,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.Categoryid).HasColumnName("categoryid");
+            entity.Property(e => e.childcategoryid).HasColumnName("ChildCategoryId");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Keywords).HasColumnName("keywords");
             entity.Property(e => e.Longdesc).HasColumnName("longdesc");
@@ -744,6 +746,22 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.ModifiedDate).HasColumnType("datetime");
             entity.Property(e => e.SubcategoryName).HasMaxLength(200);
+        });
+        
+        modelBuilder.Entity<TblChildSubcategory>(entity =>
+        {
+            entity.ToTable("tbl_ChildSubcategory", "dbo");
+
+            entity.Property(e => e.Id).HasColumnName("ID");
+            entity.Property(e => e.AddedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Categoryid).HasColumnName("categoryid");
+            entity.Property(e => e.Subcategoryid).HasColumnName("subcategoryid");
+            entity.Property(e => e.Image).HasMaxLength(50);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.ModifiedDate).HasColumnType("datetime");
+            entity.Property(e => e.ChildcategoryName).HasMaxLength(200);
         });
 
         modelBuilder.Entity<TblUser>(entity =>
@@ -1390,6 +1408,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(200)
                 .HasColumnName("categoryName");
             entity.Property(e => e.Categoryid).HasColumnName("categoryid");
+            entity.Property(e => e.ChildCategoryId).HasColumnName("ChildCategoryId");
             entity.Property(e => e.CompanyName).HasMaxLength(100);
             entity.Property(e => e.Discountprice)
                 .HasMaxLength(200)
