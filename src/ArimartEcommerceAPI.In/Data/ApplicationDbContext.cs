@@ -566,6 +566,9 @@ public partial class ApplicationDbContext : DbContext
             entity.ToTable("tbl_Ordernow", "dbo");
 
             entity.Property(e => e.Id).HasColumnName("ID");
+            entity.Property(e => e.TrackId)
+        .HasColumnName("TrackId")
+        .HasMaxLength(50);
             entity.Property(e => e.Acctt)
                 .HasDefaultValue(false)
                 .HasColumnName("acctt");

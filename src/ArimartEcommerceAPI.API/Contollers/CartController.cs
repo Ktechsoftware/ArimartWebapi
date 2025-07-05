@@ -21,6 +21,16 @@ public class CartController : ControllerBase
         if (request.UserId <= 0 || request.ProductId <= 0 || request.Quantity <= 0)
             return BadRequest("Invalid input");
 
+        // ✅ Check if the product exists
+        var productExists = await _context.TblProducts
+            .AnyAsync(p => p.Id == request.ProductId);
+
+        if (!productExists)
+        {
+            return NotFound(new { message = "Product not found" });
+        }
+
+        // ✅ Check if item is already in cart
         var existingItem = await _context.TblAddcarts.FirstOrDefaultAsync(c =>
             c.Userid == request.UserId &&
             c.Pdid == request.ProductId &&
@@ -64,12 +74,26 @@ public class CartController : ControllerBase
         var result = items.Select(c => new
         {
             id = c.Aid,
+            pid = c.Pid,
+            pdid = c.Pdid,
             name = c.ProductName,
             price = decimal.TryParse(c.Netprice, out var p) ? p : 0,
+            netprice = c.Netprice,
+            discountprice = c.Discountprice,
+            totalprice = c.Totalprice,
+            gprice = c.Gprice,
+            gqty = c.Gqty,
             image = c.Image,
-            categoryName = c.Categoryid,
-            subcategoryName = c.Subcategoryid,
-            quantity = c.Qty ?? 0
+            categoryId = c.Categoryid,
+            categoryName = c.categoryName,
+            subcategoryId = c.Subcategoryid,
+            subcategoryName = c.SubcategoryName,
+            childcategoryName = c.ChildcategoryName,
+            quantity = c.Qty ?? 0,
+            groupid = c.Groupid,
+            vendorName = c.VendorName,
+            userPhone = c.Phone,
+            qtyprice = c.Qtyprice
         }).ToList();
 
         var totalItems = result.Sum(i => i.quantity);
@@ -82,6 +106,7 @@ public class CartController : ControllerBase
             subtotal
         });
     }
+
 
     // 3. ✅ Update Quantity
     [HttpPut("update")]

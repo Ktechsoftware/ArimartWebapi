@@ -34,6 +34,7 @@ public partial class TblOrdernow
     public int? Dvendorpickup { get; set; }
 
     public int? ShipOrderid { get; set; }
+    public string? TrackId { get; set; }
 
     public int? Ddeliverredid { get; set; }
 

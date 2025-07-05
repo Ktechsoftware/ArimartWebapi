@@ -24,13 +24,11 @@ public class OrderController : ControllerBase
 
         try
         {
-            // Parse cart IDs from comma-separated string (now as long)
             var cartIds = request.Addid
                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(id => Convert.ToInt64(id.Trim()))
                 .ToList();
 
-            // Fetch matching cart items with qty > 0
             var cartItems = await _context.TblAddcarts
                 .Where(c => cartIds.Contains(c.Id) && c.Qty > 0)
                 .ToListAsync();
@@ -38,7 +36,8 @@ public class OrderController : ControllerBase
             if (cartItems.Count == 0)
                 return BadRequest(new { message = "No valid cart items found for checkout." });
 
-            // Map to order entities
+            var trackId = GenerateTrackId();
+
             var newOrders = cartItems.Select(c => new TblOrdernow
             {
                 Qty = c.Qty,
@@ -47,12 +46,15 @@ public class OrderController : ControllerBase
                 Userid = request.Userid,
                 Sipid = int.TryParse(request.Sipid, out var sipid) ? sipid : (int?)null,
                 Groupid = c.Groupid,
-                Deliveryprice = c.Price
+                Deliveryprice = c.Price,
+                TrackId = trackId,
+                AddedDate = DateTime.UtcNow,
+                IsDeleted = false,
+                IsActive = true
             }).ToList();
 
             await _context.TblOrdernows.AddRangeAsync(newOrders);
 
-            // Update tbl_addcart
             foreach (var item in cartItems)
             {
                 if (item.Groupid != null)
@@ -70,7 +72,7 @@ public class OrderController : ControllerBase
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Checkout successful." });
+            return Ok(new { message = "Checkout successful.", orderid = trackId });
         }
         catch (Exception ex)
         {
@@ -85,21 +87,28 @@ public class OrderController : ControllerBase
         if (request.Qty <= 0)
             return BadRequest(new { message = "Quantity must be greater than 0." });
 
+        var trackId = GenerateTrackId();
+
         var order = new TblOrdernow
         {
             Qty = request.Qty,
             Pid = request.Pid,
             Pdid = request.Pdid,
             Userid = request.Userid,
-            Groupid = null, // This is a normal order
-            Deliveryprice = request.Deliveryprice
+            Groupid = null,
+            Deliveryprice = request.Deliveryprice,
+            TrackId = trackId,
+            AddedDate = DateTime.UtcNow,
+            IsDeleted = false,
+            IsActive = true
         };
 
         await _context.TblOrdernows.AddAsync(order);
         await _context.SaveChangesAsync();
 
-        return Ok(new { message = "Order placed successfully." });
+        return Ok(new { message = "Order placed successfully.", orderid = trackId });
     }
+
 
     // POST: api/order/place/group
     [HttpPost("place/group")]
@@ -128,16 +137,47 @@ public class OrderController : ControllerBase
     }
     // GET: api/order/history/{userid}
     [HttpGet("history/{userid}")]
-    public async Task<IActionResult> GetOrderHistory(int userid)
+    public async Task<IActionResult> GetOrderHistory(int userid, [FromQuery] string status = null)
     {
-        var orders = await _context.TblOrdernows
-            .Where(o => o.Userid == userid && o.IsDeleted == false)
+        var baseQuery = from order in _context.TblOrdernows
+                        join p in _context.TblProducts on (int?)order.Pdid equals (int?)p.Id into pJoin
+                        from p in pJoin.DefaultIfEmpty()
+                        join c in _context.TblCategories on (p != null ? p.Categoryid : (int?)null) equals (int?)c.Id into cJoin
+                        from c in cJoin.DefaultIfEmpty()
+                        join sc in _context.TblSubcategories on (p != null ? p.Subcategoryid : (int?)null) equals (int?)sc.Id into scJoin
+                        from sc in scJoin.DefaultIfEmpty()
+                        join cc in _context.TblChildSubcategories on (p != null ? p.childcategoryid : (int?)null) equals (int?)cc.Id into ccJoin
+                        from cc in ccJoin.DefaultIfEmpty()
+                        where order.Userid == userid && !order.IsDeleted
+                        select new
+                        {
+                            order.TrackId,
+                            order.Id,
+                            order.AddedDate,
+                            order.Qty,
+                            order.Deliveryprice,
+                            ProductName = p != null ? p.ProductName : null,
+                            CategoryName = c != null ? c.CategoryName : null,
+                            SubCategoryName = sc != null ? sc.SubcategoryName : null,
+                            ChildCategoryName = cc != null ? cc.ChildcategoryName : null,
+                            Status = order.DdeliverredidTime != null ? "Delivered"
+                                    : order.ShipOrderidTime != null ? "Shipped"
+                                    : order.DvendorpickupTime != null ? "Picked Up"
+                                    : order.DassignidTime != null ? "Assigned"
+                                    : "Placed"
+                        };
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            baseQuery = baseQuery.Where(o => o.Status == status);
+        }
+
+        var orders = await baseQuery
             .OrderByDescending(o => o.AddedDate)
             .ToListAsync();
 
         return Ok(orders);
     }
-
     // GET: api/order/history/{userid}/{groupid}
     [HttpGet("history/{userid}/{groupid}")]
     public async Task<IActionResult> GetGroupOrderHistory(int userid, long groupid)
@@ -152,15 +192,17 @@ public class OrderController : ControllerBase
 
 
 
-    [HttpGet("track/{orderid}")]
-    public async Task<IActionResult> TrackOrder(long orderid)
+    [HttpGet("track/{trackId}")]
+    public async Task<IActionResult> TrackOrder(string trackId)
     {
         var order = await _context.TblOrdernows
-            .Where(o => o.Id == orderid && !o.IsDeleted)
+            .Where(o => o.TrackId == trackId && !o.IsDeleted)
             .Select(o => new
             {
+                o.TrackId,
                 o.Id,
                 o.Pid,
+                o.Pdid,
                 o.Qty,
                 o.AddedDate,
                 o.DassignidTime,
@@ -182,6 +224,7 @@ public class OrderController : ControllerBase
         return Ok(order);
     }
 
+
     [HttpDelete("{orderid}")]
     public async Task<IActionResult> CancelOrder(long orderid)
     {
@@ -194,6 +237,11 @@ public class OrderController : ControllerBase
 
         await _context.SaveChangesAsync();
         return Ok(new { message = "Order cancelled successfully." });
+    }
+
+    private string GenerateTrackId()
+    {
+        return $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
     }
 
 }

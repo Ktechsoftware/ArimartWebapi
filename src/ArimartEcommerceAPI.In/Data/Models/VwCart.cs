@@ -18,6 +18,9 @@ public partial class VwCart
     public int? Categoryid { get; set; }
 
     public int? Subcategoryid { get; set; }
+    public string? categoryName { get; set; }
+    public string? SubcategoryName { get; set; }
+    public string? ChildcategoryName { get; set; }
 
     public DateTime? AddedDate { get; set; }
 
