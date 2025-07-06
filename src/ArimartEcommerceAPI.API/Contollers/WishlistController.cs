@@ -57,8 +57,8 @@ namespace ArimartEcommerceAPI.Controllers
         [HttpGet("{userid}")]
         public async Task<IActionResult> GetWishlist(long userid)
         {
-            var wishlist = await _context.TblWishlists
-                .Where(w => w.Userid == userid && !w.IsDeleted && w.IsActive == true)
+            var wishlist = await _context.VwWhishlists
+                .Where(w => w.Cuserid == userid && w.IsDeleted == false && w.IsActive == true)
                 .ToListAsync();
 
             return Ok(wishlist);

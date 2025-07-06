@@ -179,7 +179,6 @@ namespace ArimartEcommerceAPI.Controllers
             return Ok(response);
         }
 
-
     }
 
     // Response model for paginated products
