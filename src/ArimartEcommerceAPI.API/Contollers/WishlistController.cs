@@ -40,10 +40,7 @@ namespace ArimartEcommerceAPI.Controllers
             var wishlistItem = new TblWishlist
             {
                 Userid = request.Userid,
-                Pdid = request.Pdid,
-                AddedDate = DateTime.UtcNow,
-                IsDeleted = false,
-                IsActive = true
+                Pdid = request.Pdid
             };
 
             _context.TblWishlists.Add(wishlistItem);

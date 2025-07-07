@@ -850,20 +850,22 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<TblWishlist>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("tbl_wishlist", "dbo");
+            entity.ToTable("tbl_wishlist", "dbo");
 
-            entity.Property(e => e.AddedDate)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
+            entity.HasKey(e => e.Id); // ✅ Now EF can track it
+
             entity.Property(e => e.Id)
                 .ValueGeneratedOnAdd()
                 .HasColumnName("ID");
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.ModifiedDate).HasColumnType("datetime");
+
             entity.Property(e => e.Userid).HasColumnName("userid");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.AddedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.ModifiedDate).HasColumnType("datetime");
         });
+
 
         modelBuilder.Entity<User>(entity =>
         {

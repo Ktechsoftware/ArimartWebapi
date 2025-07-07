@@ -56,6 +56,30 @@ namespace ArimartEcommerceAPI.Controllers
             return Ok(response);
         }
 
+        // GET: api/products/{id}/image-url
+        [AllowAnonymous]
+        [HttpGet("{id}/image-url")]
+        public async Task<ActionResult<string>> GetProductImageUrl(int id)
+        {
+            var product = await _context.VwProducts
+                .Where(p => p.Id == id && p.IsDeleted == false)
+                .Select(p => p.Image)
+                .FirstOrDefaultAsync();
+
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            if (string.IsNullOrEmpty(product))
+            {
+                return Ok(null);
+            }
+
+            var imageUrl = $"{Request.Scheme}://{Request.Host}/Uploads/{product}";
+            return Ok(imageUrl);
+        }
+
         // GET: api/products/{id}
         [AllowAnonymous]
         [HttpGet("{id}")]
@@ -178,6 +202,50 @@ namespace ArimartEcommerceAPI.Controllers
 
             return Ok(response);
         }
+
+        // ✅ GET: GroupBuys by ProductId (Only gid, pid, pdid)
+        [AllowAnonymous]
+        [HttpGet("groupbuy/{pid}")]
+        public async Task<ActionResult<IEnumerable<object>>> GetGroupIdsByProduct(long pid)
+        {
+            var groups = await _context.VwGroups
+                .Where(g => g.Pid == pid && g.IsDeleted1 == false)
+                .Select(g => new
+                {
+                    g.Gid,
+                    g.Pid,
+                    g.Pdid
+                })
+                .ToListAsync();
+
+            if (groups == null || !groups.Any())
+                return NotFound("No group deals found for this product.");
+
+            return Ok(groups);
+        }
+
+        // ✅ GET: GroupBuys by ProductId + ProductDetailId (Only gid, pid, pdid)
+        [AllowAnonymous]
+        [HttpGet("groupbuy/{pid}/{pdid}")]
+        public async Task<ActionResult<IEnumerable<object>>> GetGroupIdsByProductDetail(long pid, long pdid)
+        {
+            var groups = await _context.VwGroups
+                .Where(g => g.Pid == pid && g.Pdid == pdid && g.IsDeleted1 == false)
+                .Select(g => new
+                {
+                    g.Gid,
+                    g.Pid,
+                    g.Pdid
+                })
+                .ToListAsync();
+
+            if (groups == null || !groups.Any())
+                return NotFound("No group deals found for this product and detail.");
+
+            return Ok(groups);
+        }
+
+
 
     }
 
