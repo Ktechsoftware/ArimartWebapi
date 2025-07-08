@@ -200,6 +200,63 @@ public class CartController : ControllerBase
         return Ok(new { message = "Cart cleared" });
     }
 
+    [HttpPost("add/group")]
+    public async Task<IActionResult> AddToGroupCart([FromBody] AddToCartRequest request)
+    {
+        if (request.UserId <= 0 || request.ProductId <= 0 || request.Quantity <= 0 || request.GroupId == null)
+            return BadRequest("Invalid input");
+
+        // ✅ Check if product exists
+        var productExists = await _context.TblProducts
+            .AnyAsync(p => p.Id == request.ProductId);
+
+        if (!productExists)
+            return NotFound(new { message = "Product not found" });
+
+        // ✅ Check if already in group cart
+        var existingItem = await _context.TblAddcarts.FirstOrDefaultAsync(c =>
+            c.Userid == request.UserId &&
+            c.Pdid == request.ProductId &&
+            c.Groupid == request.GroupId &&
+            !c.IsDeleted);
+
+        if (existingItem != null)
+        {
+            existingItem.Qty += request.Quantity;
+            existingItem.ModifiedDate = DateTime.UtcNow;
+        }
+        else
+        {
+            var item = new TblAddcart
+            {
+                Userid = request.UserId,
+                Pdid = request.ProductId,
+                Qty = request.Quantity,
+                Price = request.Price,
+                Groupid = request.GroupId, // ✅ Save GroupId
+                AddedDate = DateTime.UtcNow,
+                IsDeleted = false,
+                IsActive = true
+            };
+            await _context.TblAddcarts.AddAsync(item);
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Item added to group cart" });
+    }
+
+    [HttpGet("usergroup")]
+    public async Task<IActionResult> GetGroupCart(int userId, long groupId)
+    {
+        var items = await _context.VwCarts
+            .Where(c => c.Cuserid == userId && c.Groupid == groupId && !c.IsDeleted1)
+            .ToListAsync();
+
+        return Ok(items);
+    }
+
+
+
     // DTOs
     public class AddToCartRequest
     {
@@ -207,7 +264,9 @@ public class CartController : ControllerBase
         public long ProductId { get; set; }
         public int Quantity { get; set; }
         public decimal Price { get; set; }
+        public long? GroupId { get; set; } // 👈 Add this for group support
     }
+
 
     public class UpdateCartRequest
     {

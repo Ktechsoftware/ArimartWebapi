@@ -44,40 +44,177 @@ namespace ArimartEcommerceAPI.Controllers
             return Ok(group);
         }
 
-        // ✅ POST: Create a new group deal
+        // ✅ POST: Create a new group deal (Based on tbl_Groupby table)
         [AllowAnonymous]
         [HttpPost("create")]
-        public async Task<IActionResult> CreateGroup([FromBody] TblGroupjoin groupJoin)
+        public async Task<IActionResult> CreateGroup([FromBody] CreateGroupRequest request)
         {
-            groupJoin.AddedDate = DateTime.UtcNow;
-            groupJoin.IsDeleted = false;
-            groupJoin.IsActive = true;
+            try
+            {
+                var newGroup = new TblGroupby
+                {
+                    Qty = request.QTY,
+                    Pid = request.PID,
+                    Pdid = request.PDID,
+                    Userid = request.userid,
+                    Acctt = request.acctt,
+                    Sipid = request.sipid
+                };
 
-            _context.TblGroupjoins.Add(groupJoin);
-            await _context.SaveChangesAsync();
+                _context.TblGroupbies.Add(newGroup);
+                await _context.SaveChangesAsync();
 
-            return Ok(groupJoin);
+                return Ok(new
+                {
+                    RESULT = newGroup.Id,
+                    STATUS = 1,
+                    Message = "Group created successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    RESULT = (long?)null,
+                    STATUS = 0,
+                    Message = ex.Message
+                });
+            }
         }
 
-        // ✅ PUT: Join existing group
+        // ✅ PUT: Update existing group
+        [AllowAnonymous]
+        [HttpPut("update/{id}")]
+        public async Task<IActionResult> UpdateGroup(long id, [FromBody] UpdateGroupRequest request)
+        {
+            try
+            {
+                var existingGroup = await _context.TblGroupbies
+                    .FirstOrDefaultAsync(g => g.Id == id && g.IsDeleted == false);
+
+                if (existingGroup == null)
+                    return NotFound(new
+                    {
+                        RESULT = (long?)null,
+                        STATUS = 0,
+                        Message = "Group not found"
+                    });
+
+                existingGroup.Qty = request.QTY;
+                existingGroup.Pid = request.PID;
+                existingGroup.Pdid = request.PDID;
+                existingGroup.Userid = request.userid;
+
+                _context.TblGroupbies.Update(existingGroup);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    RESULT = id,
+                    STATUS = 1,
+                    Message = "Group updated successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    RESULT = (long?)null,
+                    STATUS = 0,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        // ✅ DELETE: Delete/Soft delete group
+        [AllowAnonymous]
+        [HttpDelete("delete/{id}")]
+        public async Task<IActionResult> DeleteGroup(long id)
+        {
+            try
+            {
+                var group = await _context.TblGroupbies
+                    .FirstOrDefaultAsync(g => g.Id == id && g.IsDeleted == false);
+
+                if (group == null)
+                    return NotFound(new
+                    {
+                        RESULT = "Group not found",
+                        STATUS = 0
+                    });
+
+                group.IsDeleted = true;
+
+                _context.TblGroupbies.Update(group);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    RESULT = "RECORD DELETED SUCCESSFULLY......",
+                    STATUS = 1
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    RESULT = ex.Message,
+                    STATUS = 0
+                });
+            }
+        }
+
+        // ✅ POST: Join existing group (Based on tbl_Groupjoin table)
         [AllowAnonymous]
         [HttpPost("join")]
-        public async Task<IActionResult> JoinGroup([FromBody] TblGroupjoin join)
+        public async Task<IActionResult> JoinGroup([FromBody] JoinGroupRequest request)
         {
-            var exists = await _context.TblGroupjoins
-                .FirstOrDefaultAsync(j => j.Groupid == join.Groupid && j.Userid == join.Userid && j.IsDeleted == false);
+            try
+            {
+                // Check if the user has already joined this group
+                var existingJoin = await _context.TblGroupjoins
+                    .FirstOrDefaultAsync(j => j.Groupid == request.Groupid &&
+                                            j.Userid == request.userid &&
+                                            j.IsDeleted == false);
 
-            if (exists != null)
-                return BadRequest("User already joined this group.");
+                if (existingJoin != null)
+                {
+                    return BadRequest(new
+                    {
+                        RESULT = (long?)null,
+                        STATUS = 0,
+                        Message = "User already joined this group"
+                    });
+                }
 
-            join.AddedDate = DateTime.UtcNow;
-            join.IsDeleted = false;
-            join.IsActive = true;
+                var newJoin = new TblGroupjoin
+                {
+                    Groupid = request.Groupid,
+                    Userid = request.userid,
+                    AddedDate = DateTime.UtcNow,
+                    IsDeleted = false,
+                    IsActive = true
+                };
 
-            _context.TblGroupjoins.Add(join);
-            await _context.SaveChangesAsync();
+                _context.TblGroupjoins.Add(newJoin);
+                await _context.SaveChangesAsync();
 
-            return Ok(join);
+                return Ok(new
+                {
+                    RESULT = newJoin.Id,
+                    STATUS = 1,
+                    Message = "Successfully joined the group"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    RESULT = (long?)null,
+                    STATUS = 0,
+                    Message = ex.Message
+                });
+            }
         }
 
         // ✅ DELETE: Leave group
@@ -85,19 +222,40 @@ namespace ArimartEcommerceAPI.Controllers
         [HttpDelete("leave")]
         public async Task<IActionResult> LeaveGroup([FromQuery] long groupId, [FromQuery] long userId)
         {
-            var join = await _context.TblGroupjoins
-                .FirstOrDefaultAsync(j => j.Groupid == groupId && j.Userid == userId && j.IsDeleted == false);
+            try
+            {
+                var join = await _context.TblGroupjoins
+                    .FirstOrDefaultAsync(j => j.Groupid == groupId &&
+                                            j.Userid == userId &&
+                                            j.IsDeleted == false);
 
-            if (join == null)
-                return NotFound("Join not found");
+                if (join == null)
+                    return NotFound(new
+                    {
+                        RESULT = "Join record not found",
+                        STATUS = 0
+                    });
 
-            join.IsDeleted = true;
-            join.ModifiedDate = DateTime.UtcNow;
+                join.IsDeleted = true;
+                join.ModifiedDate = DateTime.UtcNow;
 
-            _context.TblGroupjoins.Update(join);
-            await _context.SaveChangesAsync();
+                _context.TblGroupjoins.Update(join);
+                await _context.SaveChangesAsync();
 
-            return Ok("Left group successfully");
+                return Ok(new
+                {
+                    RESULT = "Left group successfully",
+                    STATUS = 1
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    RESULT = ex.Message,
+                    STATUS = 0
+                });
+            }
         }
 
         // ✅ GET: List of users joined in a group
@@ -129,18 +287,18 @@ namespace ArimartEcommerceAPI.Controllers
             return Ok(groups);
         }
 
+        // Referral code endpoints (existing)
         [AllowAnonymous]
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<VwGrouprefercode>>> GetAll()
+        [HttpGet("refercode")]
+        public async Task<ActionResult<IEnumerable<VwGrouprefercode>>> GetAllReferCodes()
         {
             var referCodes = await _context.VwGrouprefercodes.ToListAsync();
             return Ok(referCodes);
         }
 
-        // GET: api/grouprefercode/5
         [AllowAnonymous]
-        [HttpGet("grouprefercode/{id}")]
-        public async Task<ActionResult<VwGrouprefercode>> GetById(long id)
+        [HttpGet("refercode/{id}")]
+        public async Task<ActionResult<VwGrouprefercode>> GetReferCodeById(long id)
         {
             var referCode = await _context.VwGrouprefercodes.FirstOrDefaultAsync(r => r.Id == id);
 
@@ -150,10 +308,9 @@ namespace ArimartEcommerceAPI.Controllers
             return Ok(referCode);
         }
 
-        // GET: api/grouprefercode/by-product/101/202
         [AllowAnonymous]
-        [HttpGet("grouprefercode/by-product/{pid}/{pdid}")]
-        public async Task<ActionResult<VwGrouprefercode>> GetByProduct(long pid, long pdid)
+        [HttpGet("refercode/by-product/{pid}/{pdid}")]
+        public async Task<ActionResult<VwGrouprefercode>> GetReferCodeByProduct(long pid, long pdid)
         {
             var referCode = await _context.VwGrouprefercodes
                 .FirstOrDefaultAsync(r => r.Pid == pid && r.Pdid == pdid);
@@ -163,5 +320,30 @@ namespace ArimartEcommerceAPI.Controllers
 
             return Ok(referCode);
         }
+    }
+
+    // Request DTOs
+    public class CreateGroupRequest
+    {
+        public int QTY { get; set; }
+        public long PID { get; set; }
+        public long PDID { get; set; }
+        public int userid { get; set; }
+        public bool? acctt { get; set; }
+        public int sipid { get; set; }
+    }
+
+    public class UpdateGroupRequest
+    {
+        public int QTY { get; set; }
+        public long PID { get; set; }
+        public long PDID { get; set; }
+        public int userid { get; set; }
+    }
+
+    public class JoinGroupRequest
+    {
+        public long Groupid { get; set; }
+        public int userid { get; set; }
     }
 }
