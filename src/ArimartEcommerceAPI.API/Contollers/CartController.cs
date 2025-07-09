@@ -30,10 +30,11 @@ public class CartController : ControllerBase
             return NotFound(new { message = "Product not found" });
         }
 
-        // ✅ Check if item is already in cart
+        // ✅ Check if item is already in cart (including optional GroupId if present)
         var existingItem = await _context.TblAddcarts.FirstOrDefaultAsync(c =>
             c.Userid == request.UserId &&
             c.Pdid == request.ProductId &&
+            c.Groupid == request.GroupId && // handles null too
             !c.IsDeleted);
 
         if (existingItem != null)
@@ -49,6 +50,7 @@ public class CartController : ControllerBase
                 Pdid = request.ProductId,
                 Qty = request.Quantity,
                 Price = request.Price,
+                Groupid = request.GroupId, // ✅ Set only if provided
                 AddedDate = DateTime.UtcNow,
                 IsDeleted = false,
                 IsActive = true
@@ -71,7 +73,12 @@ public class CartController : ControllerBase
         if (!items.Any())
             return Ok(new { items = new List<object>(), totalItems = 0, subtotal = 0 });
 
-        var result = items.Select(c => new
+        // ✅ Filter only items without groupid
+        var regularItems = items
+            .Where(c => c.Groupid == null || c.Groupid == 0) // null or 0 treated as no group
+            .ToList();
+
+        var result = regularItems.Select(c => new
         {
             id = c.Aid,
             pid = c.Pid,
@@ -106,6 +113,7 @@ public class CartController : ControllerBase
             subtotal
         });
     }
+
 
 
     // 3. ✅ Update Quantity
@@ -200,50 +208,6 @@ public class CartController : ControllerBase
         return Ok(new { message = "Cart cleared" });
     }
 
-    [HttpPost("add/group")]
-    public async Task<IActionResult> AddToGroupCart([FromBody] AddToCartRequest request)
-    {
-        if (request.UserId <= 0 || request.ProductId <= 0 || request.Quantity <= 0 || request.GroupId == null)
-            return BadRequest("Invalid input");
-
-        // ✅ Check if product exists
-        var productExists = await _context.TblProducts
-            .AnyAsync(p => p.Id == request.ProductId);
-
-        if (!productExists)
-            return NotFound(new { message = "Product not found" });
-
-        // ✅ Check if already in group cart
-        var existingItem = await _context.TblAddcarts.FirstOrDefaultAsync(c =>
-            c.Userid == request.UserId &&
-            c.Pdid == request.ProductId &&
-            c.Groupid == request.GroupId &&
-            !c.IsDeleted);
-
-        if (existingItem != null)
-        {
-            existingItem.Qty += request.Quantity;
-            existingItem.ModifiedDate = DateTime.UtcNow;
-        }
-        else
-        {
-            var item = new TblAddcart
-            {
-                Userid = request.UserId,
-                Pdid = request.ProductId,
-                Qty = request.Quantity,
-                Price = request.Price,
-                Groupid = request.GroupId, // ✅ Save GroupId
-                AddedDate = DateTime.UtcNow,
-                IsDeleted = false,
-                IsActive = true
-            };
-            await _context.TblAddcarts.AddAsync(item);
-        }
-
-        await _context.SaveChangesAsync();
-        return Ok(new { message = "Item added to group cart" });
-    }
 
     [HttpGet("usergroup")]
     public async Task<IActionResult> GetGroupCart(int userId, long groupId)

@@ -261,14 +261,33 @@ namespace ArimartEcommerceAPI.Controllers
         // ✅ GET: List of users joined in a group
         [AllowAnonymous]
         [HttpGet("members/{groupId}")]
-        public async Task<ActionResult<IEnumerable<TblGroupjoin>>> GetGroupMembers(long groupId)
+        public async Task<ActionResult> GetGroupMembers(long groupId)
         {
-            var members = await _context.TblGroupjoins
-                .Where(j => j.Groupid == groupId && j.IsDeleted == false)
+            var membersWithUserDetails = await _context.TblGroupjoins
+                .Where(j => j.Groupid == groupId && !j.IsDeleted)
+                .Join(
+                    _context.TblUsers,
+                    j => j.Userid,
+                    u => u.Id,
+                    (j, u) => new
+                    {
+                        groupJoinId = j.Id,
+                        groupId = j.Groupid,
+                        userId = u.Id,
+                        userName = u.VendorName ?? u.ContactPerson,
+                        phone = u.Phone,
+                        email = u.Email,
+                        userType = u.UserType,
+                        isActive = j.IsActive,
+                        addedDate = j.AddedDate,
+                        acctt = j.Acctt,
+                        sipid = j.Sipid
+                    })
                 .ToListAsync();
 
-            return Ok(members);
+            return Ok(membersWithUserDetails);
         }
+
 
         // ✅ GET: My joined groups
         [AllowAnonymous]
