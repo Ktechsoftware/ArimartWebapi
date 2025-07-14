@@ -4,6 +4,8 @@ using System.Text;
 using ArimartEcommerceAPI.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using ArimartEcommerceAPI.Services.Services;
+using ArimartEcommerceAPI.Infrastructure.Data.Repositories;
+using ArimartEcommerceAPI.Infrastructure.Data.Hubs;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
@@ -59,6 +61,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IOTPService, MockOTPService>();
 //builder.Services.AddScoped<IOTPService, OTPService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
@@ -83,5 +88,9 @@ app.MapGet("/", async context =>
     context.Response.Redirect("/docs.html");
     await Task.CompletedTask;
 });
-app.MapControllers();
+app.UseEndpoints(endpoints =>
+{
+    _ = endpoints.MapControllers();
+    _ = endpoints.MapHub<NotificationHub>("/notificationHub");
+});
 app.Run();
