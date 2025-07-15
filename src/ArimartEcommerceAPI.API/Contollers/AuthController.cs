@@ -132,7 +132,9 @@ public class AuthController : ControllerBase
             name = user.VendorName ?? user.ContactPerson,
             phone = user.Phone,
             email = user.Email,
-            type = user.UserType
+            type = user.UserType,
+            adddress = user.Address
+
         });
     }
 
@@ -158,8 +160,64 @@ public class AuthController : ControllerBase
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Phone == phone);
     }
+
+    // 6. Update User Info
+    [AllowAnonymous]
+    [HttpPut("update-user/{userId}")]
+    public async Task<IActionResult> UpdateUser(long userId, [FromBody] UpdateUserRequest request)
+    {
+        var user = await _context.TblUsers.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return NotFound(new { message = "User not found." });
+
+        // Update fields if provided
+        if (!string.IsNullOrWhiteSpace(request.Name))
+            user.ContactPerson = request.Name;
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+            user.Email = request.Email;
+
+        if (!string.IsNullOrWhiteSpace(request.Address))
+            user.Address = request.Address;
+
+        if (!string.IsNullOrWhiteSpace(request.VendorName))
+            user.VendorName = request.VendorName;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                user = new
+                {
+                    id = user.Id,
+                    name = user.VendorName ?? user.ContactPerson,
+                    phone = user.Phone,
+                    email = user.Email,
+                    type = user.UserType,
+                    address = user.Address
+                },
+                message = "User information updated successfully."
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to update user information." });
+        }
+    }
+
 }
 
+
+// Request model for updating user
+public class UpdateUserRequest
+{
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+    public string? Address { get; set; }
+    public string? VendorName { get; set; }
+}
 
 public class SendOtpRequest
 {

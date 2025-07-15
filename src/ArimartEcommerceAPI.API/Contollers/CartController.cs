@@ -216,8 +216,95 @@ public class CartController : ControllerBase
             .Where(c => c.Cuserid == userId && c.Groupid == groupId && !c.IsDeleted1)
             .ToListAsync();
 
-        return Ok(items);
+        if (!items.Any())
+            return Ok(new { items = new List<object>(), totalItems = 0, subtotal = 0 });
+
+        var result = items.Select(c => new
+        {
+            id = c.Aid,
+            pid = c.Pid,
+            pdid = c.Pdid,
+            name = c.ProductName,
+            price = decimal.TryParse(c.Netprice, out var p) ? p : 0,
+            netprice = c.Netprice,
+            discountprice = c.Discountprice,
+            totalprice = c.Totalprice,
+            gprice = c.Gprice,
+            gqty = c.Gqty,
+            image = c.Image,
+            categoryId = c.Categoryid,
+            categoryName = c.categoryName,
+            subcategoryId = c.Subcategoryid,
+            subcategoryName = c.SubcategoryName,
+            childcategoryName = c.ChildcategoryName,
+            quantity = c.Qty ?? 0,
+            groupid = c.Groupid,
+            vendorName = c.VendorName,
+            userPhone = c.Phone,
+            qtyprice = c.Qtyprice
+        }).ToList();
+
+        var totalItems = result.Sum(i => i.quantity);
+        var subtotal = result.Sum(i => i.price * i.quantity);
+
+        return Ok(new
+        {
+            items = result,
+            totalItems,
+            subtotal
+        });
     }
+
+    [HttpGet("groupcart")]
+    public async Task<IActionResult> GetGroupCart(int userId)
+    {
+        var items = await _context.VwCarts
+            .Where(c => c.Cuserid == userId && c.Groupid != null && !c.IsDeleted1)
+            .ToListAsync();
+
+        if (!items.Any())
+            return Ok(new { items = new List<object>(), totalItems = 0, subtotal = 0 });
+
+        var result = items.Select(c => {
+            decimal.TryParse(c.Netprice, out var netPrice);
+            return new
+            {
+                id = c.Aid,
+                pid = c.Pid,
+                pdid = c.Pdid,
+                name = c.ProductName,
+                price = netPrice,
+                netprice = c.Netprice,
+                discountprice = c.Discountprice,
+                totalprice = c.Totalprice,
+                gprice = c.Gprice,
+                gqty = c.Gqty,
+                image = c.Image,
+                categoryId = c.Categoryid,
+                categoryName = c.categoryName,
+                subcategoryId = c.Subcategoryid,
+                subcategoryName = c.SubcategoryName,
+                childcategoryName = c.ChildcategoryName,
+                quantity = c.Qty ?? 0,
+                groupid = c.Groupid,
+                vendorName = c.VendorName,
+                userPhone = c.Phone,
+                qtyprice = c.Qtyprice
+            };
+        }).ToList();
+
+        var totalItems = result.Sum(i => i.quantity);
+        var subtotal = result.Sum(i => i.price * i.quantity);
+
+        return Ok(new
+        {
+            items = result,
+            totalItems,
+            subtotal
+        });
+    }
+
+
 
 
 

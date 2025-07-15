@@ -19,35 +19,32 @@ namespace ArimartEcommerceAPI.Controllers
         }
 
         // POST: api/rating
-        [AllowAnonymous]
-        [HttpPost]
-        public async Task<IActionResult> SubmitRating([FromBody] SubmitRatingRequest request)
+        [HttpPost("rate")]
+        public async Task<IActionResult> SubmitRating([FromBody] ProductRatingRequest request)
         {
-            if (request.Ratingid < 1 || request.Ratingid > 5)
-                return BadRequest(new { message = "Rating must be between 1 and 5." });
+            // ✅ Find the latest delivered order for the product and user
+            var order = await _context.TblOrdernows
+                .Where(o => o.Userid == request.UserId && o.Pid == request.Pdid && o.DdeliverredidTime != null)
+                .OrderByDescending(o => o.DdeliverredidTime)
+                .FirstOrDefaultAsync();
 
-            // Check if user already rated this product
-            var existingRating = await _context.TblRatings.FirstOrDefaultAsync(r =>
-                r.Userid == request.Userid &&
-                r.Pdid == request.Pdid &&
-                !r.IsDeleted &&
-                r.IsActive == true);
+            if (order == null)
+                return BadRequest(new { message = "You can only rate products you have received (delivered)." });
+
+            // ✅ Check if already rated
+            var existingRating = await _context.TblRatings
+                .FirstOrDefaultAsync(r => r.Userid == request.UserId && r.Pdid == request.Pdid && r.Orderid == order.Id);
 
             if (existingRating != null)
-            {
-                return BadRequest(new { message = "You have already rated this product." });
-            }
+                return BadRequest(new { message = "You have already rated this product from this order." });
 
             var rating = new TblRating
             {
-                Ratingid = request.Ratingid,
-                Userid = request.Userid,
-                Orderid = request.Orderid,
-                Descr = request.Descr,
+                Userid = request.UserId,
+                Orderid = order.Id,              // ✅ Auto-fetched
                 Pdid = request.Pdid,
-                AddedDate = DateTime.UtcNow,
-                IsDeleted = false,
-                IsActive = true
+                Ratingid = request.Rating,
+                Descr = request.Comment
             };
 
             _context.TblRatings.Add(rating);
@@ -55,6 +52,8 @@ namespace ArimartEcommerceAPI.Controllers
 
             return Ok(new { message = "Rating submitted successfully." });
         }
+
+
 
         // GET: api/rating/analytics/{pdid}
         [AllowAnonymous]
@@ -306,14 +305,14 @@ namespace ArimartEcommerceAPI.Controllers
 }
 
 // Request/Response Models
-public class SubmitRatingRequest
+public class ProductRatingRequest
 {
-    public int Ratingid { get; set; }      // e.g., 1 to 5
-    public long Userid { get; set; }       // User giving the rating
-    public long Orderid { get; set; }      // Optional: to track which order this came from
-    public string? Descr { get; set; }     // Optional review text
-    public long Pdid { get; set; }         // ProductDetail ID (or Product ID depending on usage)
+    public int UserId { get; set; }
+    public long Pdid { get; set; }
+    public int Rating { get; set; } // 1 to 5
+    public string? Comment { get; set; }
 }
+
 
 public class ProductRatingAnalytics
 {

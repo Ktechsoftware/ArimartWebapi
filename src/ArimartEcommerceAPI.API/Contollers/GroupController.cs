@@ -22,8 +22,13 @@ namespace ArimartEcommerceAPI.Controllers
         [HttpGet("all")]
         public async Task<ActionResult<IEnumerable<VwGroup>>> GetAllGroups()
         {
+            var now = DateTime.UtcNow;
             var groups = await _context.VwGroups
-                .Where(g => g.IsDeleted1 == false)
+                 .Where(g =>
+                    g.EventSend1 != null &&
+                    g.EventSend1 > now &&
+                    g.IsDeleted1 == false
+                )
                 .OrderByDescending(g => g.AddedDate)
                 .ToListAsync();
 
@@ -51,6 +56,7 @@ namespace ArimartEcommerceAPI.Controllers
         {
             try
             {
+                // 1. Create the group
                 var newGroup = new TblGroupby
                 {
                     Qty = request.QTY,
@@ -64,11 +70,23 @@ namespace ArimartEcommerceAPI.Controllers
                 _context.TblGroupbies.Add(newGroup);
                 await _context.SaveChangesAsync();
 
+                // 2. Auto-join: Add creator as a member in TblGroupjoin
+                var creatorJoin = new TblGroupjoin
+                {
+                    Groupid = newGroup.Id, // Use the group Id from the newly created group
+                    Userid = request.userid,
+                    AddedDate = DateTime.UtcNow,
+                    IsDeleted = false,
+                    IsActive = true
+                };
+                _context.TblGroupjoins.Add(creatorJoin);
+                await _context.SaveChangesAsync();
+
                 return Ok(new
                 {
                     RESULT = newGroup.Id,
                     STATUS = 1,
-                    Message = "Group created successfully"
+                    Message = "Group created and join."
                 });
             }
             catch (Exception ex)
@@ -339,6 +357,56 @@ namespace ArimartEcommerceAPI.Controllers
 
             return Ok(referCode);
         }
+
+        [AllowAnonymous]
+        [HttpGet("current-running")]
+        public async Task<IActionResult> GetCurrentRunningGroups()
+        {
+            var now = DateTime.UtcNow;
+
+            var runningGroups = await _context.TblGroupbies
+                .Where(g =>
+                    g.EventSend1 != null &&
+                    g.EventSend1 > now &&
+                    g.IsDeleted == false
+                )
+                .OrderBy(g => g.EventSend1)
+                .ToListAsync();
+            return Ok(runningGroups);
+        }
+
+        [AllowAnonymous]
+        [HttpGet("status-short/{gid}")]
+        public async Task<IActionResult> GetGroupShortStatus(long gid)
+        {
+            var group = await _context.VwGroups
+                .FirstOrDefaultAsync(g => g.Gid == gid && g.IsDeleted1 == false);
+            if (group == null)
+            {
+                return NotFound(new
+                {
+                    STATUS = 0,
+                    MESSAGE = "Group not found"
+                });
+            }
+            int required = int.TryParse(group.Gqty, out var gqtyParsed) ? gqtyParsed : 0;
+
+            int joined = await _context.TblGroupjoins
+    .CountAsync(j => j.Groupid == gid && j.IsDeleted == false && j.IsActive == true);
+
+            int remaining = Math.Max(required - joined, 0);
+            string status = remaining == 0 ? "completed" : "pending";
+
+            return Ok(new
+            {
+                status,
+                remainingMembers = remaining
+            });
+
+        }
+
+
+
     }
 
     // Request DTOs

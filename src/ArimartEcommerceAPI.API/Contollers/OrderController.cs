@@ -109,7 +109,6 @@ public class OrderController : ControllerBase
         return Ok(new { message = "Order placed successfully.", orderid = trackId });
     }
 
-
     // POST: api/order/place/group
     [HttpPost("place/group")]
     public async Task<IActionResult> PlaceGroupOrder([FromBody] PlaceOrderRequest request)
@@ -135,28 +134,32 @@ public class OrderController : ControllerBase
 
         return Ok(new { message = "Group order placed successfully." });
     }
+
     // GET: api/order/history/{userid}
     [HttpGet("history/{userid}")]
     public async Task<IActionResult> GetOrderHistory(int userid, [FromQuery] string status = null)
     {
         var baseQuery = from order in _context.TblOrdernows
-                        join p in _context.TblProducts on (int?)order.Pdid equals (int?)p.Id into pJoin
+                        where order.Userid == userid
+                              && !order.IsDeleted
+                        join p in _context.VwProducts on (int?)order.Pdid equals (int?)p.Pdid into pJoin
                         from p in pJoin.DefaultIfEmpty()
                         join c in _context.TblCategories on (p != null ? p.Categoryid : (int?)null) equals (int?)c.Id into cJoin
                         from c in cJoin.DefaultIfEmpty()
                         join sc in _context.TblSubcategories on (p != null ? p.Subcategoryid : (int?)null) equals (int?)sc.Id into scJoin
                         from sc in scJoin.DefaultIfEmpty()
-                        join cc in _context.TblChildSubcategories on (p != null ? p.childcategoryid : (int?)null) equals (int?)cc.Id into ccJoin
+                        join cc in _context.TblChildSubcategories on (p != null ? p.ChildCategoryId : (int?)null) equals (int?)cc.Id into ccJoin
                         from cc in ccJoin.DefaultIfEmpty()
-                        where order.Userid == userid && !order.IsDeleted
                         select new
                         {
                             order.TrackId,
                             order.Id,
+                            order.Groupid,
                             order.AddedDate,
                             order.Qty,
                             order.Deliveryprice,
                             ProductName = p != null ? p.ProductName : null,
+                            ProductImage = p != null ? p.Image : null,
                             CategoryName = c != null ? c.CategoryName : null,
                             SubCategoryName = sc != null ? sc.SubcategoryName : null,
                             ChildCategoryName = cc != null ? cc.ChildcategoryName : null,
@@ -176,54 +179,174 @@ public class OrderController : ControllerBase
             .OrderByDescending(o => o.AddedDate)
             .ToListAsync();
 
-        return Ok(orders);
+        // Group by TrackId to show orders with same track ID together
+        var groupedOrders = orders
+            .GroupBy(o => o.TrackId)
+            .Select(g => new
+            {
+                TrackId = g.Key,
+                OrderDate = g.First().AddedDate,
+                TotalItems = g.Count(),
+                TotalAmount = g.Sum(o => o.Deliveryprice * o.Qty),
+                Status = g.First().Status, // Assuming all items in same track have same status
+                Items = g.Select(o => new
+                {
+                    o.Id,
+                    o.Qty,
+                    o.Groupid,
+                    o.Deliveryprice,
+                    o.ProductName,
+                    o.ProductImage,
+                    o.CategoryName,
+                    o.SubCategoryName,
+                    o.ChildCategoryName,
+                    o.Status
+                }).ToList()
+            })
+            .OrderByDescending(o => o.OrderDate)
+            .ToList();
+
+        return Ok(groupedOrders);
     }
-    // GET: api/order/history/{userid}/{groupid}
+
     [HttpGet("history/{userid}/{groupid}")]
     public async Task<IActionResult> GetGroupOrderHistory(int userid, long groupid)
     {
-        var orders = await _context.TblOrdernows
-            .Where(o => o.Userid == userid && o.Groupid == groupid && o.IsDeleted == false)
-            .OrderByDescending(o => o.AddedDate)
-            .ToListAsync();
+        var orders = from order in _context.TblOrdernows
+                     where order.Userid == userid
+                           && order.Groupid == groupid
+                           && !order.IsDeleted
+                     join p in _context.VwProducts on (int?)order.Pdid equals (int?)p.Pdid into pJoin
+                     from p in pJoin.DefaultIfEmpty()
+                     join c in _context.TblCategories on (p != null ? p.Categoryid : (int?)null) equals (int?)c.Id into cJoin
+                     from c in cJoin.DefaultIfEmpty()
+                     join sc in _context.TblSubcategories on (p != null ? p.Subcategoryid : (int?)null) equals (int?)sc.Id into scJoin
+                     from sc in scJoin.DefaultIfEmpty()
+                     join cc in _context.TblChildSubcategories on (p != null ? p.ChildCategoryId : (int?)null) equals (int?)cc.Id into ccJoin
+                     from cc in ccJoin.DefaultIfEmpty()
+                     orderby order.AddedDate descending
+                     select new
+                     {
+                         order.TrackId,
+                         order.Id,
+                         order.AddedDate,
+                         order.Qty,
+                         order.Deliveryprice,
+                         ProductName = p != null ? p.ProductName : null,
+                         ProductImage = p != null ? p.Image : null,
+                         CategoryName = c != null ? c.CategoryName : null,
+                         SubCategoryName = sc != null ? sc.SubcategoryName : null,
+                         ChildCategoryName = cc != null ? cc.ChildcategoryName : null,
+                         Status = order.DdeliverredidTime != null ? "Delivered"
+                                 : order.ShipOrderidTime != null ? "Shipped"
+                                 : order.DvendorpickupTime != null ? "Picked Up"
+                                 : order.DassignidTime != null ? "Assigned"
+                                 : "Placed"
+                     };
 
-        return Ok(orders);
+        var result = await orders.ToListAsync();
+        return Ok(result);
     }
 
-
-
+    // 🔥 FIXED: Track Order - Now returns ALL items with same track ID
     [HttpGet("track/{trackId}")]
     public async Task<IActionResult> TrackOrder(string trackId)
     {
-        var order = await _context.TblOrdernows
-            .Where(o => o.TrackId == trackId && !o.IsDeleted)
-            .Select(o => new
+        var orders = await (
+            from order in _context.TblOrdernows
+            join p in _context.VwProducts on (int?)order.Pdid equals (int?)p.Pdid into pJoin
+            from p in pJoin.DefaultIfEmpty()
+            join c in _context.TblCategories on (p != null ? p.Categoryid : (int?)null) equals (int?)c.Id into cJoin
+            from c in cJoin.DefaultIfEmpty()
+            join sc in _context.TblSubcategories on (p != null ? p.Subcategoryid : (int?)null) equals (int?)sc.Id into scJoin
+            from sc in scJoin.DefaultIfEmpty()
+            join cc in _context.TblChildSubcategories on (p != null ? p.ChildCategoryId : (int?)null) equals (int?)cc.Id into ccJoin
+            from cc in ccJoin.DefaultIfEmpty()
+            where order.TrackId == trackId && !order.IsDeleted
+            select new
             {
-                o.TrackId,
-                o.Id,
-                o.Pid,
-                o.Pdid,
-                o.Qty,
-                o.AddedDate,
-                o.DassignidTime,
-                o.DvendorpickupTime,
-                o.ShipOrderidTime,
-                o.DdeliverredidTime,
-                o.DuserassginidTime,
-                Status = o.DdeliverredidTime != null ? "Delivered"
-                        : o.ShipOrderidTime != null ? "Shipped"
-                        : o.DvendorpickupTime != null ? "Picked Up"
-                        : o.DassignidTime != null ? "Assigned"
-                        : "Placed"
-            })
-            .FirstOrDefaultAsync();
+                order.TrackId,
+                order.Id,
+                order.Pid,
+                order.Pdid,
+                order.Qty,
+                order.Groupid,
+                order.Deliveryprice,
+                order.AddedDate,
+                order.DassignidTime,
+                order.DvendorpickupTime,
+                order.ShipOrderidTime,
+                order.DdeliverredidTime,
+                order.DuserassginidTime,
 
-        if (order == null)
+                Status = order.DdeliverredidTime != null ? "Delivered"
+                        : order.ShipOrderidTime != null ? "Shipped"
+                        : order.DvendorpickupTime != null ? "Picked Up"
+                        : order.DassignidTime != null ? "Assigned"
+                        : "Placed",
+
+                ProductDetails = new
+                {
+                    Id = p != null ? p.Id : (long?)null,
+                    Name = p != null ? p.ProductName : null,
+                    Description = p != null ? p.Longdesc : null,
+                    Image = p != null ? p.Image : null,
+                    Price = p != null ? p.Price : null,
+                    Unit = p != null ? p.Wtype : null,
+                    Weight = p != null ? p.Wweight : null
+                },
+
+                Category = new
+                {
+                    Name = c != null ? c.CategoryName : null
+                },
+
+                SubCategory = new
+                {
+                    Name = sc != null ? sc.SubcategoryName : null
+                },
+
+                ChildCategory = new
+                {
+                    Name = cc != null ? cc.ChildcategoryName : null
+                }
+            })
+            .ToListAsync(); // 🔥 Changed from FirstOrDefaultAsync to ToListAsync
+
+        if (!orders.Any())
             return NotFound(new { message = "Order not found." });
 
-        return Ok(order);
-    }
+        // Return structured response with order summary and all items
+        var result = new
+        {
+            TrackId = trackId,
+            OrderDate = orders.First().AddedDate,
+            TotalItems = orders.Count,
+            TotalAmount = orders.Sum(o => o.Deliveryprice * o.Qty),
+            OverallStatus = orders.First().Status, // You might want to calculate this based on all items
+            Items = orders.Select(order => new
+            {
+                order.Id,
+                order.Pid,
+                order.Pdid,
+                order.Qty,
+                order.Groupid,
+                order.Deliveryprice,
+                order.Status,
+                order.DassignidTime,
+                order.DvendorpickupTime,
+                order.ShipOrderidTime,
+                order.DdeliverredidTime,
+                order.DuserassginidTime,
+                order.ProductDetails,
+                order.Category,
+                order.SubCategory,
+                order.ChildCategory
+            }).ToList()
+        };
 
+        return Ok(result);
+    }
 
     [HttpDelete("{orderid}")]
     public async Task<IActionResult> CancelOrder(long orderid)
@@ -239,9 +362,29 @@ public class OrderController : ControllerBase
         return Ok(new { message = "Order cancelled successfully." });
     }
 
+    // 🔥 NEW: Cancel entire order by Track ID (all items)
+    [HttpDelete("track/{trackId}")]
+    public async Task<IActionResult> CancelOrderByTrackId(string trackId)
+    {
+        var orders = await _context.TblOrdernows
+            .Where(o => o.TrackId == trackId && !o.IsDeleted)
+            .ToListAsync();
+
+        if (!orders.Any())
+            return NotFound(new { message = "Order not found or already deleted." });
+
+        foreach (var order in orders)
+        {
+            order.IsDeleted = true;
+            order.ModifiedDate = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { message = $"Order {trackId} cancelled successfully. {orders.Count} items cancelled." });
+    }
+
     private string GenerateTrackId()
     {
         return $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
     }
-
 }
