@@ -67,17 +67,19 @@ builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:5173") // ✅ Your React app origin
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials(); // ✅ Important for SignalR & cookies
     });
 });
+
 var app = builder.Build();
 app.UseStaticFiles(); // ✅ Serve files from wwwroot
 app.UseRouting();
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseMiddleware<ApiKeyMiddleware>();
