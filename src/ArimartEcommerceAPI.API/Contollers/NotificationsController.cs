@@ -39,6 +39,7 @@ namespace ArimartEcommerceAPI.API.Contollers
         }
 
         [HttpPost]
+       
         public async Task<ActionResult<ApiResponse<NotificationDto>>> CreateNotification(
             [FromBody] CreateNotificationDto notificationDto)
         {
@@ -47,6 +48,7 @@ namespace ArimartEcommerceAPI.API.Contollers
         }
 
         [HttpPut("{id}/read")]
+        [AllowAnonymous]
         public async Task<ActionResult<ApiResponse<bool>>> MarkAsRead(long id)
         {
             var userId = GetCurrentUserId();
@@ -57,6 +59,7 @@ namespace ArimartEcommerceAPI.API.Contollers
         }
 
         [HttpGet("unread-count")]
+        [AllowAnonymous]
         public async Task<ActionResult<ApiResponse<int>>> GetUnreadCount()
         {
             var userId = GetCurrentUserId();

@@ -842,16 +842,16 @@ namespace ArimartEcommerceAPI.Controllers
             };
         }
 
-        private decimal CalculateDiscountPercentage(VwProduct product)
-        {
-            if (decimal.TryParse(product.Price, out var price) &&
-                decimal.TryParse(product.Discountprice, out var discountPrice) &&
-                price > 0 && discountPrice > 0 && price > discountPrice)
-            {
-                return Math.Round(((price - discountPrice) / price) * 100, 2);
-            }
-            return 0;
-        }
+        //private decimal CalculateDiscountPercentage(VwProduct product)
+        //{
+        //    if (decimal.TryParse(product.Price, out var price) &&
+        //        decimal.TryParse(product.Discountprice, out var discountPrice) &&
+        //        price > 0 && discountPrice > 0 && price > discountPrice)
+        //    {
+        //        return Math.Round(((price - discountPrice) / price) * 100, 2);
+        //    }
+        //    return 0;
+        //}
 
         private async Task<AvailableFilters> GenerateAvailableFilters(List<VwProduct> products, FilterRequest request)
         {
@@ -982,12 +982,12 @@ namespace ArimartEcommerceAPI.Controllers
             return filters.OrderBy(f => f.Name).ToList();
         }
 
-        private bool IsTopBrand(VwProduct product)
-        {
-            var topBrands = new[] { "Cadbury", "Amul", "KITKAT", "Nestlé", "HERSHEY'S", "Britannia", "Parle" };
-            return topBrands.Any(brand =>
-                product.CompanyName?.Contains(brand, StringComparison.OrdinalIgnoreCase) == true);
-        }
+        //private bool IsTopBrand(VwProduct product)
+        //{
+        //    var topBrands = new[] { "Cadbury", "Amul", "KITKAT", "Nestlé", "HERSHEY'S", "Britannia", "Parle" };
+        //    return topBrands.Any(brand =>
+        //        product.CompanyName?.Contains(brand, StringComparison.OrdinalIgnoreCase) == true);
+        //}
 
         private List<PriceRange> GeneratePriceRanges(List<VwProduct> products)
         {
@@ -1092,19 +1092,445 @@ namespace ArimartEcommerceAPI.Controllers
             return options;
         }
 
-        // Helper classes
-        public class PaginationResult
+
+        // ====================  POPULAR PRODUCTS & SPECIAL CATEGORIES =========================
+
+        // GET: api/products/popular?page=1&pageSize=10
+        [AllowAnonymous]
+        [HttpGet("popular")]
+        public async Task<ActionResult<ProductsResponse>> GetPopularProducts(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string category = "all") // all, bestseller, trending, featured, new-arrivals
         {
-            public List<VwProduct> Products { get; set; } = new();
-            public int CurrentPage { get; set; }
-            public int PageSize { get; set; }
-            public int TotalCount { get; set; }
-            public int TotalPages { get; set; }
-            public bool HasNextPage { get; set; }
-            public bool HasPreviousPage { get; set; }
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 50) pageSize = 10;
+
+            var baseQuery = _context.VwProducts
+                .Where(p => p.IsDeleted == false && p.IsActive == true);
+
+            // Apply category-specific logic
+            IQueryable<VwProduct> query = category.ToLower() switch
+            {
+                "bestseller" => GetBestsellerQuery(baseQuery),
+                "trending" => GetTrendingQuery(baseQuery),
+                "featured" => GetFeaturedQuery(baseQuery),
+                "new-arrivals" => GetNewArrivalsQuery(baseQuery),
+                "deals" => await GetDealsQuery(baseQuery),
+                "premium" => await GetPremiumQuery(baseQuery),
+                _ => await GetGeneralPopularQuery(baseQuery)
+            };
+
+            var totalCount = query.Count();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            var products = query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var response = new ProductsResponse
+            {
+                Products = products,
+                CurrentPage = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                HasNextPage = page < totalPages,
+                HasPreviousPage = page > 1
+            };
+
+            return Ok(response);
+        }
+
+        // GET: api/products/categories/special
+        [AllowAnonymous]
+        [HttpGet("categories/special")]
+        public async Task<ActionResult<SpecialCategoriesResponse>> GetSpecialCategories()
+        {
+            var response = new SpecialCategoriesResponse();
+
+            // Get counts for each special category
+            var allActiveProducts = _context.VwProducts
+                .Where(p => p.IsDeleted == false && p.IsActive == true);
+
+            var dealsQuery = await GetDealsQuery(allActiveProducts);
+            var premiumQuery = await GetPremiumQuery(allActiveProducts);
+
+            response.Categories = new List<SpecialCategory>
+    {
+        new SpecialCategory
+        {
+            Key = "bestseller",
+            Name = "Best Sellers",
+            Description = "Most popular products based on sales",
+            Count = GetBestsellerQuery(allActiveProducts).Count(),
+            Icon = "🔥"
+        },
+        new SpecialCategory
+        {
+            Key = "trending",
+            Name = "Trending Now",
+            Description = "Products gaining popularity",
+            Count = GetTrendingQuery(allActiveProducts).Count(),
+            Icon = "📈"
+        },
+        new SpecialCategory
+        {
+            Key = "featured",
+            Name = "Featured Products",
+            Description = "Hand-picked premium selections",
+            Count = GetFeaturedQuery(allActiveProducts).Count(),
+            Icon = "⭐"
+        },
+        new SpecialCategory
+        {
+            Key = "new-arrivals",
+            Name = "New Arrivals",
+            Description = "Latest products added",
+            Count = GetNewArrivalsQuery(allActiveProducts).Count(),
+            Icon = "🆕"
+        },
+        new SpecialCategory
+        {
+            Key = "deals",
+            Name = "Special Deals",
+            Description = "Products with significant discounts",
+            Count = dealsQuery.Count(),
+            Icon = "💰"
+        },
+        new SpecialCategory
+        {
+            Key = "premium",
+            Name = "Premium Selection",
+            Description = "High-quality premium products",
+            Count = premiumQuery.Count(),
+            Icon = "👑"
+        }
+    };
+
+            return Ok(response);
+        }
+
+        // GET: api/products/recommendations/{productId}
+        [AllowAnonymous]
+        [HttpGet("recommendations/{productId}")]
+        public async Task<ActionResult<List<VwProduct>>> GetRecommendations(
+            long productId,
+            [FromQuery] int limit = 8)
+        {
+            var product = await _context.VwProducts
+                .FirstOrDefaultAsync(p => p.Id == productId && p.IsDeleted == false && p.IsActive == true);
+
+            if (product == null)
+                return NotFound();
+
+            var recommendations = await GetProductRecommendations(product, limit);
+            return Ok(recommendations);
+        }
+
+        // GET: api/products/homepage-sections
+        [AllowAnonymous]
+        [HttpGet("homepage-sections")]
+        public async Task<ActionResult<HomepageSectionsResponse>> GetHomepageSections()
+        {
+            var response = new HomepageSectionsResponse();
+
+            // Get different sections with limited products for homepage
+            var allActiveProducts = _context.VwProducts
+                .Where(p => p.IsDeleted == false && p.IsActive == true);
+
+            var dealsQuery = await GetDealsQuery(allActiveProducts);
+            var featuredQuery = GetFeaturedQuery(allActiveProducts);
+
+            response.Sections = new List<HomepageSection>
+    {
+        new HomepageSection
+        {
+            Title = "Best Sellers",
+            Key = "bestseller",
+            Products = GetBestsellerQuery(allActiveProducts).Take(8).ToList()
+        },
+        new HomepageSection
+        {
+            Title = "Trending Now",
+            Key = "trending",
+            Products = GetTrendingQuery(allActiveProducts).Take(8).ToList()
+        },
+        new HomepageSection
+        {
+            Title = "New Arrivals",
+            Key = "new-arrivals",
+            Products = GetNewArrivalsQuery(allActiveProducts).Take(8).ToList()
+        },
+        new HomepageSection
+        {
+            Title = "Special Deals",
+            Key = "deals",
+            Products = dealsQuery.Take(8).ToList()
+        },
+        new HomepageSection
+        {
+            Title = "Featured Products",
+            Key = "featured",
+            Products = featuredQuery.Take(8).ToList()
+        }
+    };
+
+            return Ok(response);
+        }
+
+        // Private helper methods for different product categories
+
+        private IQueryable<VwProduct> GetBestsellerQuery(IQueryable<VwProduct> query)
+        {
+            // Logic: Products with high sales, good ratings, frequent purchases
+            return query
+                .Where(p =>
+                    !string.IsNullOrEmpty(p.ProductName) &&
+                    (p.SpecialTags.Contains("popular") || p.SpecialTags.Contains("bestseller") ||
+                     (!string.IsNullOrEmpty(p.Price) && !string.IsNullOrEmpty(p.Discountprice))))
+                .OrderByDescending(p => p.AddedDate);
+        }
+
+        private IQueryable<VwProduct> GetTrendingQuery(IQueryable<VwProduct> query)
+        {
+            // Logic: Products gaining popularity recently
+            var thirtyDaysAgo = DateTime.Now.AddDays(-30);
+
+            return query
+                .Where(p =>
+                    p.AddedDate >= thirtyDaysAgo ||
+                    p.SpecialTags.Contains("trending") ||
+                    p.SpecialTags.Contains("viral"))
+                .OrderByDescending(p => p.AddedDate);
+        }
+
+        private IQueryable<VwProduct> GetFeaturedQuery(IQueryable<VwProduct> query)
+        {
+            // Logic: Hand-picked premium or featured products
+            return query
+                .Where(p =>
+                    p.SpecialTags.Contains("featured") ||
+                    p.SpecialTags.Contains("premium") ||
+                    p.SpecialTags.Contains("editor"))
+                .OrderByDescending(p => p.AddedDate);
+        }
+
+        private IQueryable<VwProduct> GetNewArrivalsQuery(IQueryable<VwProduct> query)
+        {
+            // Logic: Recently added products (last 30 days)
+            var thirtyDaysAgo = DateTime.Now.AddDays(-30);
+
+            return query
+                .Where(p => p.AddedDate >= thirtyDaysAgo)
+                .OrderByDescending(p => p.AddedDate);
+        }
+
+        private async Task<IQueryable<VwProduct>> GetDealsQuery(IQueryable<VwProduct> query)
+        {
+            // Logic: Products with significant discounts (>= 15%)
+            var productsWithPrices = await query
+                .Where(p =>
+                    !string.IsNullOrEmpty(p.Price) &&
+                    !string.IsNullOrEmpty(p.Discountprice))
+                .ToListAsync();
+
+            var dealsProducts = productsWithPrices
+                .Where(p =>
+                    decimal.TryParse(p.Price, out var price) &&
+                    decimal.TryParse(p.Discountprice, out var discountPrice) &&
+                    price > discountPrice &&
+                    ((price - discountPrice) / price) * 100 >= 15)
+                .OrderByDescending(p => CalculateDiscountPercentage(p))
+                .ThenByDescending(p => p.AddedDate);
+
+            return dealsProducts.AsQueryable();
+        }
+
+        private async Task<IQueryable<VwProduct>> GetPremiumQuery(IQueryable<VwProduct> query)
+        {
+            // Logic: High-quality, premium products
+            var productsWithPrices = await query
+                .Where(p => !string.IsNullOrEmpty(p.Price))
+                .ToListAsync();
+
+            var premiumProducts = productsWithPrices
+                .Where(p =>
+                    IsTopBrand(p) ||
+                    (decimal.TryParse(p.Price, out var price) && price >= 500) ||
+                    (!string.IsNullOrEmpty(p.SpecialTags) && (
+                        p.SpecialTags.Contains("premium", StringComparison.OrdinalIgnoreCase) ||
+                        p.SpecialTags.Contains("luxury", StringComparison.OrdinalIgnoreCase) ||
+                        p.SpecialTags.Contains("organic", StringComparison.OrdinalIgnoreCase)
+                    )))
+                .OrderByDescending(p => decimal.TryParse(p.Price, out var price) ? price : 0)
+                .ThenByDescending(p => p.AddedDate);
+
+            return premiumProducts.AsQueryable();
+        }
+
+        private async Task<IQueryable<VwProduct>> GetGeneralPopularQuery(IQueryable<VwProduct> query)
+        {
+            // Logic: General popularity based on various factors
+            var allProducts = await query.ToListAsync();
+
+            var popularProducts = allProducts
+                .Where(p =>
+                    IsTopBrand(p) ||
+                    CalculateDiscountPercentage(p) > 10 ||
+                    (p.SpecialTags?.Contains("popular") == true) ||
+                    (p.SpecialTags?.Contains("bestseller") == true))
+                .OrderByDescending(p => IsTopBrand(p) ? 1 : 0)
+                .ThenByDescending(p => CalculateDiscountPercentage(p))
+                .ThenByDescending(p => p.AddedDate);
+
+            return popularProducts.AsQueryable();
+        }
+
+        private async Task<List<VwProduct>> GetProductRecommendations(VwProduct product, int limit)
+        {
+            var recommendations = new List<VwProduct>();
+
+            // 1. Products from same category/subcategory
+            var sameCategory = await _context.VwProducts
+                .Where(p => p.IsDeleted == false && p.IsActive == true &&
+                           p.Id != product.Id &&
+                           (p.Categoryid == product.Categoryid ||
+                            p.Subcategoryid == product.Subcategoryid))
+                .OrderByDescending(p => p.AddedDate)
+                .Take(limit / 2)
+                .ToListAsync();
+
+            recommendations.AddRange(sameCategory);
+
+            // 2. Products with similar SpecialTags
+            if (!string.IsNullOrEmpty(product.SpecialTags))
+            {
+                var specialTags = product.SpecialTags.Split(',').Select(k => k.Trim()).ToList();
+                var similarProducts = await _context.VwProducts
+                    .Where(p => p.IsDeleted == false && p.IsActive == true &&
+                               p.Id != product.Id &&
+                               !recommendations.Select(r => r.Id).Contains(p.Id) &&
+                               specialTags.Any(k => p.SpecialTags.Contains(k)))
+                    .OrderByDescending(p => p.AddedDate)
+                    .Take(limit - recommendations.Count)
+                    .ToListAsync();
+
+                recommendations.AddRange(similarProducts);
+            }
+
+            // 3. Fill remaining slots with popular products
+            if (recommendations.Count < limit)
+            {
+                var popular = await _context.VwProducts
+                    .Where(p => p.IsDeleted == false && p.IsActive == true &&
+                               p.Id != product.Id &&
+                               !recommendations.Select(r => r.Id).Contains(p.Id))
+                    .OrderByDescending(p => p.AddedDate)
+                    .Take(limit - recommendations.Count)
+                    .ToListAsync();
+
+                recommendations.AddRange(popular);
+            }
+
+            return recommendations.Take(limit).ToList();
+        }
+
+        // Helper methods that can be used with client evaluation
+        private decimal CalculateDiscountPercentage(VwProduct product)
+        {
+            if (string.IsNullOrEmpty(product.Price) || string.IsNullOrEmpty(product.Discountprice))
+                return 0;
+
+            if (decimal.TryParse(product.Price, out var price) &&
+                decimal.TryParse(product.Discountprice, out var discountPrice) &&
+                price > discountPrice)
+            {
+                return ((price - discountPrice) / price) * 100;
+            }
+
+            return 0;
+        }
+
+        private bool IsTopBrand(VwProduct product)
+        {
+            if (string.IsNullOrEmpty(product.CompanyName) && string.IsNullOrEmpty(product.VendorName))
+                return false;
+
+            var topBrands = new[] { "Samsung", "Apple", "Nike", "Adidas", "Sony", "LG", "Canon", "Dell", "HP", "Lenovo" };
+
+            return topBrands.Any(brand =>
+                (!string.IsNullOrEmpty(product.CompanyName) &&
+                 product.CompanyName.Contains(brand, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(product.VendorName) &&
+                 product.VendorName.Contains(brand, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // Additional helper method for product ranking
+        private int CalculatePopularityScore(VwProduct product)
+        {
+            int score = 0;
+
+            // Brand score
+            if (IsTopBrand(product)) score += 100;
+
+            // Discount score
+            var discountPercentage = CalculateDiscountPercentage(product);
+            score += (int)(discountPercentage * 2);
+
+            // Recency score
+            var daysSinceAdded = (DateTime.Now - product.AddedDate).Days;
+            if (daysSinceAdded <= 7) score += 50;
+            else if (daysSinceAdded <= 30) score += 25;
+
+            // Keyword score
+            if (!string.IsNullOrEmpty(product.SpecialTags))
+            {
+                var popularSpecialTags = new[] { "popular", "bestseller", "trending", "featured", "premium" };
+                score += popularSpecialTags.Count(k => product.SpecialTags.Contains(k, StringComparison.OrdinalIgnoreCase)) * 20;
+            }
+
+            return score;
         }
     }
+        // Response models
+        public class SpecialCategoriesResponse
+        {
+            public List<SpecialCategory> Categories { get; set; } = new();
+        }
 
+        public class SpecialCategory
+        {
+            public string Key { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public string Description { get; set; } = string.Empty;
+            public int Count { get; set; }
+            public string Icon { get; set; } = string.Empty;
+        }
+
+        public class HomepageSectionsResponse
+        {
+            public List<HomepageSection> Sections { get; set; } = new();
+        }
+
+        public class HomepageSection
+        {
+            public string Title { get; set; } = string.Empty;
+            public string Key { get; set; } = string.Empty;
+            public List<VwProduct> Products { get; set; } = new();
+        }
+
+    public class PaginationResult
+    {
+        public List<VwProduct> Products { get; set; } = new();
+        public int CurrentPage { get; set; }
+        public int PageSize { get; set; }
+        public int TotalCount { get; set; }
+        public int TotalPages { get; set; }
+        public bool HasNextPage { get; set; }
+        public bool HasPreviousPage { get; set; }
+    }
     public static class StringExtensions
     {
         public static string ToTitleCase(this string input)

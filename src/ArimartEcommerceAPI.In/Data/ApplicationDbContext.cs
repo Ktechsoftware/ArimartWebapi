@@ -1436,6 +1436,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(200)
                 .HasColumnName("netprice");
             entity.Property(e => e.PPros).HasColumnName("p_pros");
+            entity.Property(e => e.SpecialTags).HasColumnName("specialtags");
             entity.Property(e => e.Pdid).HasColumnName("pdid");
             entity.Property(e => e.Price)
                 .HasMaxLength(200)

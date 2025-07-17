@@ -31,6 +31,7 @@ public partial class VwProduct
     public int? Userid { get; set; }
 
     public string? PPros { get; set; }
+    public string? SpecialTags { get; set; }
 
     public long? Pdid { get; set; }
 

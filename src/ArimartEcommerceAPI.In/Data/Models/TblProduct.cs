@@ -31,4 +31,5 @@ public partial class TblProduct
     public int? Userid { get; set; }
 
     public string? PPros { get; set; }
+    public string? SpecialTags { get; set; }
 }
