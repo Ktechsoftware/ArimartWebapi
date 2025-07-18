@@ -8,6 +8,7 @@ public partial class TblWallet
     public long Id { get; set; }
 
     public decimal? Amount { get; set; }
+    public decimal? ReferAmount { get; set; }
 
     public long? Userid { get; set; }
 

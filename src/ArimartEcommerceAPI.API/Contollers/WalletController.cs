@@ -28,7 +28,9 @@ public class WalletController : ControllerBase
         return Ok(new
         {
             userid,
-            balance = wallet?.Amount ?? 0
+            totalbalance = (wallet?.Amount ?? 0) + (wallet?.ReferAmount ?? 0),
+            referamount = wallet?.ReferAmount ?? 0,
+            walletamount = wallet?.Amount ?? 0
         });
     }
 

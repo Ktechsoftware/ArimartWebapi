@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ArimartEcommerceAPI.Services.Services; // for INotificationService
+using ArimartEcommerceAPI.Infrastructure.Data.DTO; // for CreateNotificationDto
+
 
 [ApiController]
 [Route("api/[controller]")]
@@ -15,13 +18,20 @@ public class AuthController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly ITokenService _tokenService;
     private readonly IOTPService _otpService;
+    private readonly INotificationService _notificationService;
 
-    public AuthController(ApplicationDbContext context, ITokenService tokenService, IOTPService otpService)
+    public AuthController(
+        ApplicationDbContext context,
+        ITokenService tokenService,
+        IOTPService otpService,
+        INotificationService notificationService)
     {
         _context = context;
         _tokenService = tokenService;
         _otpService = otpService;
+        _notificationService = notificationService;
     }
+
 
     // 1. Send OTP
     [HttpPost("send-otp")]
@@ -68,7 +78,7 @@ public class AuthController : ControllerBase
             user = new
             {
                 id = user.Id,
-                name = user.VendorName ?? user.ContactPerson,
+                name = user.ContactPerson,
                 phone = user.Phone,
                 email = user.Email,
                 type = user.UserType
@@ -77,7 +87,6 @@ public class AuthController : ControllerBase
         });
     }
 
-    // 3. Register New User
     [HttpPost("register")]
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
@@ -89,33 +98,118 @@ public class AuthController : ControllerBase
         if (existingUser != null)
             return Conflict(new { message = "User already exists. Please login." });
 
-        var user = new TblUser
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            Phone = request.Phone,
-            ContactPerson = request.Name,
-            Email = request.Email,
-            UserType = "User",
-        };
-
-        _context.TblUsers.Add(user);
-        await _context.SaveChangesAsync();
-
-        var token = _tokenService.CreateToken(user);
-
-        return Ok(new
-        {
-            token,
-            user = new
+            var user = new TblUser
             {
-                id = user.Id,
-                name = user.VendorName ?? user.ContactPerson,
-                phone = user.Phone,
-                email = user.Email,
-                type = user.UserType
-            },
-            message = "Registration successful."
-        });
+                Phone = request.Phone,
+                ContactPerson = request.Name,
+                Email = request.Email,
+                UserType = "User",
+                RefferalCode = request.RefferalCode
+            };
+
+            _context.TblUsers.Add(user);
+            await _context.SaveChangesAsync();
+
+            // Check referral code before creating user
+            if (!string.IsNullOrWhiteSpace(request.RefferalCode))
+            {
+                var inviter = await _context.VwUserrefercodes
+                    .FirstOrDefaultAsync(v => v.Refercode == request.RefferalCode);
+
+                if (inviter == null)
+                {
+                    return BadRequest(new { message = "Invalid referral code." });
+                }
+
+                if (inviter != null)
+                    {
+                        if (inviter.Id == user.Id)
+                        {
+                            return BadRequest(new { message = "You cannot use your own referral code." });
+                        }
+
+                        var referral = new TblUserReferral
+                        {
+                            InviterUserId = inviter.Id,
+                            NewUserId = user.Id,
+                            UsedReferralCode = request.RefferalCode!,
+                            RewardAmount = 100,
+                            IsRewarded = true,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _context.TblUserReferrals.Add(referral);
+
+                        _context.TblWallets.AddRange(new[]
+                        {
+                        new TblWallet
+                        {
+                            Userid = inviter.Id,
+                            ReferAmount = 50,
+                            AddedDate = DateTime.UtcNow,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Acctt = true
+                        },
+                        new TblWallet
+                        {
+                            Userid = user.Id,
+                            ReferAmount = 50,
+                            AddedDate = DateTime.UtcNow,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Acctt = true
+                        }
+                    });
+
+                        await _notificationService.CreateNotificationAsync(new CreateNotificationDto
+                        {
+                            UserId = inviter.Id,
+                            Urlt = "/wallet",
+                            Title = "Referral Bonus 🎉",
+                            Message = $"You received ₹50 for referring {user.ContactPerson}.",
+                        });
+
+                        await _notificationService.CreateNotificationAsync(new CreateNotificationDto
+                        {
+                            UserId = user.Id,
+                            Urlt = "/wallet",
+                            Title = "Welcome Reward 🎁",
+                            Message = $"You received ₹50 for using a referral code!",
+                        });
+                    }
+                }
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            var token = _tokenService.CreateToken(user);
+
+            return Ok(new
+            {
+                token,
+                user = new
+                {
+                    id = user.Id,
+                    name = user.ContactPerson,
+                    phone = user.Phone,
+                    email = user.Email,
+                    type = user.UserType,
+                    address = user.Address,
+                    refferalCode = user.RefferalCode
+                },
+                message = "Registration successful."
+            });
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            return StatusCode(500, new { message = "Registration failed.", error = ex.Message });
+        }
     }
+
 
     // 4. Get User Info
     [HttpGet("user-info/{userId}")]
@@ -129,7 +223,7 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             id = user.Id,
-            name = user.VendorName ?? user.ContactPerson,
+            name = user.ContactPerson,
             phone = user.Phone,
             email = user.Email,
             type = user.UserType,
@@ -192,7 +286,7 @@ public class AuthController : ControllerBase
                 user = new
                 {
                     id = user.Id,
-                    name = user.VendorName ?? user.ContactPerson,
+                    name = user.ContactPerson,
                     phone = user.Phone,
                     email = user.Email,
                     type = user.UserType,
@@ -235,4 +329,5 @@ public class RegisterRequest
     public string? Name { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }
+    public string? RefferalCode { get; set; } = null;
 }

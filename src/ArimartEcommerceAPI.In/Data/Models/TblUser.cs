@@ -74,4 +74,5 @@ public partial class TblUser
     public string? CreditReference { get; set; }
 
     public int? ExposerLimit { get; set; }
+    public string? RefferalCode { get; set; }
 }

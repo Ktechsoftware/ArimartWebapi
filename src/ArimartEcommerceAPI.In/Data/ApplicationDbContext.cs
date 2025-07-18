@@ -106,6 +106,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<VwUserrefercode> VwUserrefercodes { get; set; }
 
     public virtual DbSet<VwWhishlist> VwWhishlists { get; set; }
+    public virtual DbSet<TblUserReferral> TblUserReferrals { get; set; }
+
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -118,39 +120,52 @@ public partial class ApplicationDbContext : DbContext
         modelBuilder.Entity<Address>(entity =>
         {
             entity
-                .HasNoKey()
                 .ToTable("address", "dbo");
+
+            entity.HasKey(e => e.AdId); // <-- Set Primary Key
+
+            entity.Property(e => e.AdId).HasColumnName("ad_id");
 
             entity.Property(e => e.AdAddress1)
                 .IsUnicode(false)
                 .HasColumnName("ad_address1");
+
             entity.Property(e => e.AdAddress2)
                 .HasMaxLength(11)
                 .IsUnicode(false)
                 .HasColumnName("ad_address2");
+
             entity.Property(e => e.AdCity)
                 .HasMaxLength(30)
                 .IsUnicode(false)
                 .HasColumnName("ad_city");
-            entity.Property(e => e.AdContact)
-                .HasMaxLength(12)
-                .IsUnicode(false)
-                .HasColumnName("ad_contact");
-            entity.Property(e => e.AdId).HasColumnName("ad_id");
+
             entity.Property(e => e.AdLandmark)
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("ad_landmark");
+
+            entity.Property(e => e.AdPincode)
+                .HasColumnName("ad_pincode");
+
+            entity.Property(e => e.IsPrimary)
+                .HasDefaultValueSql("('0')")
+                .HasColumnName("is_primary");
+
+            entity.Property(e => e.UId)
+                .HasColumnName("u_id");
+
+            entity.Property(e => e.AdContact)
+                .HasMaxLength(12)
+                .IsUnicode(false)
+                .HasColumnName("ad_contact");
+
             entity.Property(e => e.AdName)
                 .HasMaxLength(30)
                 .IsUnicode(false)
                 .HasColumnName("ad_name");
-            entity.Property(e => e.AdPincode).HasColumnName("ad_pincode");
-            entity.Property(e => e.IsPrimary)
-                .HasDefaultValueSql("('0')")
-                .HasColumnName("is_primary");
-            entity.Property(e => e.UId).HasColumnName("u_id");
         });
+
 
         modelBuilder.Entity<Cart>(entity =>
         {
@@ -827,6 +842,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.VendorName)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+            entity.Property(e => e.RefferalCode)
+                .HasMaxLength(100)
+                .IsUnicode(false);
         });
 
         modelBuilder.Entity<TblWallet>(entity =>
@@ -843,10 +861,64 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Amount)
                 .HasColumnType("decimal(10, 2)")
                 .HasColumnName("amount");
+            entity.Property(e => e.ReferAmount)
+                .HasColumnType("decimal(10, 2)")
+                .HasColumnName("referamount");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.ModifiedDate).HasColumnType("datetime");
             entity.Property(e => e.Userid).HasColumnName("userid");
         });
+
+        modelBuilder.Entity<TblUserReferral>(entity =>
+        {
+            entity.ToTable("tbl_UserReferral", "dbo");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasColumnName("Id");
+
+            entity.Property(e => e.InviterUserId)
+                .HasColumnName("InviterUserId")
+                .IsRequired();
+
+            entity.Property(e => e.NewUserId)
+                .HasColumnName("NewUserId")
+                .IsRequired();
+
+            entity.Property(e => e.UsedReferralCode)
+                .HasColumnName("UsedReferralCode")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.RewardAmount)
+                .HasColumnName("RewardAmount")
+                .HasColumnType("decimal(10,2)")
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.IsRewarded)
+                .HasColumnName("IsRewarded")
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("CreatedAt")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("(getdate())");
+
+            entity.Property(e => e.ModifiedAt)
+                .HasColumnName("ModifiedAt")
+                .HasColumnType("datetime");
+
+            entity.Property(e => e.IsDeleted)
+                .HasColumnName("IsDeleted")
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.IsActive)
+                .HasColumnName("IsActive")
+                .HasDefaultValue(true);
+        });
+
+
 
         modelBuilder.Entity<TblWishlist>(entity =>
         {
