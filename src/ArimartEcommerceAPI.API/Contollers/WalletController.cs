@@ -20,21 +20,24 @@ public class WalletController : ControllerBase
     [HttpGet("balance/{userid}")]
     public async Task<IActionResult> GetWalletBalance(long userid)
     {
-        var wallet = await _context.TblWallets
+        var walletEntries = await _context.TblWallets
             .Where(w => w.Userid == userid && !w.IsDeleted)
-            .OrderByDescending(w => w.AddedDate)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+
+        var totalRefer = walletEntries.Sum(w => w.ReferAmount ?? 0);
+        var totalAmount = walletEntries.Sum(w => w.Amount ?? 0);
+        var totalBalance = totalAmount + totalRefer;
 
         return Ok(new
         {
             userid,
-            totalbalance = (wallet?.Amount ?? 0) + (wallet?.ReferAmount ?? 0),
-            referamount = wallet?.ReferAmount ?? 0,
-            walletamount = wallet?.Amount ?? 0
+            totalbalance = totalBalance,
+            referamount = totalRefer,
+            walletamount = totalAmount
         });
     }
 
-    
+
     [HttpPost("add")]
     public async Task<IActionResult> AddToWallet([FromBody] AddWalletRequest request)
     {
@@ -58,30 +61,52 @@ public class WalletController : ControllerBase
     [HttpPost("deduct")]
     public async Task<IActionResult> DeductFromWallet([FromBody] DeductWalletRequest request)
     {
-        // Get latest balance
-        var wallet = await _context.TblWallets
+        // Get all wallet entries (not just latest)
+        var walletEntries = await _context.TblWallets
             .Where(w => w.Userid == request.Userid && !w.IsDeleted)
-            .OrderByDescending(w => w.AddedDate)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
 
-        var currentBalance = wallet?.Amount ?? 0;
+        var totalAmount = walletEntries.Sum(w => w.Amount ?? 0);
+        var totalRefer = walletEntries.Sum(w => w.ReferAmount ?? 0);
+        var totalBalance = totalAmount + totalRefer;
 
-        if (currentBalance < request.Amount)
-            return BadRequest(new { message = "Insufficient balance" });
+        if (totalBalance < request.Amount)
+            return BadRequest(new { message = "Insufficient wallet balance" });
 
-        var deduction = new TblWallet
+        // Deduct from Amount first, then ReferAmount
+        decimal remaining = request.Amount;
+
+        if (totalAmount >= remaining)
         {
-            Userid = request.Userid,
-            Amount = -request.Amount, // negative for deduction
-            AddedDate = DateTime.UtcNow,
-            IsDeleted = false,
-            IsActive = true,
-            Acctt = true
-        };
+            _context.TblWallets.Add(new TblWallet
+            {
+                Userid = request.Userid,
+                Amount = -remaining,
+                ReferAmount = 0,
+                AddedDate = DateTime.UtcNow,
+                IsActive = true,
+                IsDeleted = false,
+                Acctt = true
+            });
+        }
+        else
+        {
+            // Deduct full Amount and remaining from ReferAmount
+            _context.TblWallets.Add(new TblWallet
+            {
+                Userid = request.Userid,
+                Amount = -totalAmount,
+                ReferAmount = -(remaining - totalAmount),
+                AddedDate = DateTime.UtcNow,
+                IsActive = true,
+                IsDeleted = false,
+                Acctt = true
+            });
+        }
 
-        _context.TblWallets.Add(deduction);
         await _context.SaveChangesAsync();
 
-        return Ok(new { message = "Amount deducted from wallet." });
+        return Ok(new { message = "Amount deducted from wallet successfully." });
     }
+
 }

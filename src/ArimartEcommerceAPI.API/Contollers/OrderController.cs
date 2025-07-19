@@ -44,7 +44,7 @@ public class OrderController : ControllerBase
                 Pid = c.Pid,
                 Pdid = c.Pdid,
                 Userid = request.Userid,
-                Sipid = int.TryParse(request.Sipid, out var sipid) ? sipid : (int?)null,
+                Sipid = request.Sipid,
                 Groupid = c.Groupid,
                 Deliveryprice = c.Price,
                 TrackId = trackId,

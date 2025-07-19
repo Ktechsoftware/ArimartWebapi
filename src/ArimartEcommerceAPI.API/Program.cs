@@ -58,8 +58,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<IOTPService, MockOTPService>();
-//builder.Services.AddScoped<IOTPService, OTPService>();
+//builder.Services.AddSingleton<IOTPService, MockOTPService>();
+builder.Services.AddScoped<IOTPService, OTPService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -69,12 +69,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173") // ✅ Your React app origin
+        policy.WithOrigins(
+                "https://arimartreact.kuldeepchaurasia.in",
+                "http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // ✅ Important for SignalR & cookies
+              .AllowCredentials(); // Important for SignalR & cookies
     });
 });
+
 
 var app = builder.Build();
 app.UseStaticFiles(); // ✅ Serve files from wwwroot

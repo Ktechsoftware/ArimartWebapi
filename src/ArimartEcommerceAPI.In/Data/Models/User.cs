@@ -19,7 +19,7 @@ public partial class User
 
     public string LastOtp { get; set; } = null!;
 
-    public string? OtpTime { get; set; }
+    public DateTime? OtpTime { get; set; }
 
     public short IsAdmin { get; set; }
 

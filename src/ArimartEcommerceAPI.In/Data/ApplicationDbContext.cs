@@ -967,7 +967,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(30)
                 .HasColumnName("logging_count");
             entity.Property(e => e.OtpTime)
-                .HasMaxLength(30)
                 .HasColumnName("otp_time");
             entity.Property(e => e.Password)
                 .HasMaxLength(20)

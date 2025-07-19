@@ -113,20 +113,28 @@ namespace ArimartEcommerceAPI.Services.Services
                     return false;
                 }
 
-                // Check if OTP has expired
-                if (DateTime.TryParse(user.OtpTime, out DateTime otpTime))
+                if (user.LastOtp?.Trim() != otp.Trim())
                 {
-                    if (DateTime.Now.Subtract(otpTime).TotalMinutes > OTP_EXPIRY_MINUTES)
+                    _logger.LogWarning("OTP mismatch. Entered: {Entered}, Stored: {Stored}", otp, user.LastOtp);
+                    return false;
+                }
+
+
+                if (user.OtpTime.HasValue)
+                {
+                    double minutes = DateTime.Now.Subtract(user.OtpTime.Value).TotalMinutes;
+                    if (minutes > OTP_EXPIRY_MINUTES)
                     {
-                        _logger.LogWarning("Expired OTP for mobile: {MobileNumber}", mobileNumber);
+                        _logger.LogWarning("OTP expired. Elapsed minutes: {Minutes}", minutes);
                         return false;
                     }
                 }
                 else
                 {
-                    _logger.LogError("Invalid OTP time format for mobile: {MobileNumber}", mobileNumber);
+                    _logger.LogError("OTP time missing for user {MobileNumber}", mobileNumber);
                     return false;
                 }
+
 
                 // Clear OTP after successful verification
                 user.LastOtp = null;
@@ -153,7 +161,7 @@ namespace ArimartEcommerceAPI.Services.Services
                 if (user != null)
                 {
                     user.LastOtp = otp;
-                    user.OtpTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    user.OtpTime = DateTime.Now;
                     await _context.SaveChangesAsync();
                 }
                 else
