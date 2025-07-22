@@ -174,17 +174,18 @@ namespace ArimartEcommerceAPI.Controllers
             var totalCount = await query.CountAsync();
 
             var ratings = await query
-                .Join(_context.Users,
+                .Join(_context.TblUsers,
                       r => r.Userid,
-                      u => u.UserId,
+                      u => u.Id,
                       (r, u) => new DetailedRating
                       {
                           RatingId = r.Id,
+                          UserId = r.Userid,
                           Rating = r.Ratingid ?? 0,
                           Description = r.Descr,
-                          UserName = u.FullName,
+                          UserName = u.ContactPerson,
                           RatedOn = r.AddedDate,
-                          OrderId = r.Orderid
+                          OrderId = r.Orderid ?? 0
                       })
                 .OrderByDescending(r => r.RatedOn)
                 .Skip((page - 1) * pageSize)
@@ -231,13 +232,13 @@ namespace ArimartEcommerceAPI.Controllers
         {
             var ratings = await _context.TblRatings
                 .Where(r => r.Pdid == pdid && !r.IsDeleted && r.IsActive == true)
-                .Join(_context.Users,
+                .Join(_context.TblUsers,
                       r => r.Userid,
-                      u => u.UserId,
+                      u => u.Id,
                       (r, u) => new {
                           Rating = r.Ratingid,
                           Description = r.Descr,
-                          UserName = u.FullName,
+                          UserName = u.ContactPerson,
                           RatedOn = r.AddedDate
                       })
                 .ToListAsync();
@@ -333,6 +334,7 @@ public class DetailedRating
 {
     public long RatingId { get; set; }
     public int Rating { get; set; }
+    public long? UserId { get; set; }
     public string? Description { get; set; }
     public string? UserName { get; set; }
     public DateTime RatedOn { get; set; }

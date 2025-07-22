@@ -60,5 +60,30 @@ namespace ArimartEcommerceAPI.Controllers
 
             return Ok(wishlist);
         }
+
+        // DELETE: api/wishlist
+        [AllowAnonymous]
+        [HttpDelete]
+        public async Task<IActionResult> RemoveFromWishlist([FromBody] AddToWishlistRequest request)
+        {
+            if (request.Userid == 0 || request.Pdid == 0)
+                return BadRequest(new { message = "User ID and Product ID are required." });
+
+            var wishlistItem = await _context.TblWishlists.FirstOrDefaultAsync(w =>
+                w.Userid == request.Userid && w.Pdid == request.Pdid && !w.IsDeleted);
+
+            if (wishlistItem == null)
+                return NotFound(new { message = "Wishlist item not found." });
+
+            wishlistItem.IsDeleted = true;
+            wishlistItem.ModifiedDate = DateTime.UtcNow;
+
+            _context.TblWishlists.Update(wishlistItem);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Product removed from wishlist." });
+        }
+
+
     }
 }

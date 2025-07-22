@@ -385,6 +385,10 @@ public class OrderController : ControllerBase
 
     private string GenerateTrackId()
     {
-        return $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
+        string datePart = DateTime.UtcNow.ToString("ddHHmm"); // e.g., "221540"
+        string randomPart = Guid.NewGuid().ToString("N").Substring(0, 2).ToUpper(); // e.g., "A9"
+
+        return $"ORD-{datePart}{randomPart}"; // e.g., "ORD-221540A9" (8 characters after ORD-)
     }
+
 }

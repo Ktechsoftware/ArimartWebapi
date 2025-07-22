@@ -17,7 +17,7 @@ public partial class User
 
     public string? IsActive { get; set; }
 
-    public string LastOtp { get; set; } = null!;
+    public string? LastOtp { get; set; }
 
     public DateTime? OtpTime { get; set; }
 

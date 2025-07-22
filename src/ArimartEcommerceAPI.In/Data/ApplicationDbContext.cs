@@ -107,6 +107,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<VwWhishlist> VwWhishlists { get; set; }
     public virtual DbSet<TblUserReferral> TblUserReferrals { get; set; }
+    public virtual DbSet<TblPromocode> TblPromocodes { get; set; }
+    public virtual DbSet<TblPromocodeUsage> TblPromocodeUsages { get; set; }
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -1532,6 +1534,88 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("wweight");
         });
 
+        modelBuilder.Entity<TblPromocode>(entity =>
+        {
+            entity.ToTable("tbl_promocode", "dbo");
+
+            entity.HasKey(e => e.PromoId);
+
+            entity.Property(e => e.PromoId).HasColumnName("promo_id");
+
+            entity.Property(e => e.Code)
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasColumnName("code");
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(255)
+                .HasColumnName("description");
+
+            entity.Property(e => e.DiscountType)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasColumnName("discount_type");
+
+            entity.Property(e => e.DiscountValue)
+                .HasColumnType("decimal(10,2)")
+                .HasColumnName("discount_value");
+
+            entity.Property(e => e.MinOrderValue)
+                .HasColumnType("decimal(10,2)")
+                .HasColumnName("min_order_value");
+
+            entity.Property(e => e.MaxDiscount)
+                .HasColumnType("decimal(10,2)")
+                .HasColumnName("max_discount");
+
+            entity.Property(e => e.UsageLimit)
+                .HasColumnName("usage_limit");
+
+            entity.Property(e => e.PerUserLimit)
+                .HasColumnName("per_user_limit");
+
+            entity.Property(e => e.StartDate)
+                .HasColumnType("datetime")
+                .HasColumnName("start_date");
+
+            entity.Property(e => e.EndDate)
+                .HasColumnType("datetime")
+                .HasColumnName("end_date");
+
+            entity.Property(e => e.AddedDate)
+                .HasColumnType("datetime")
+                .HasColumnName("AddedDate");
+
+            entity.Property(e => e.ModifiedDate)
+                .HasColumnType("datetime")
+                .HasColumnName("ModifiedDate");
+
+            entity.Property(e => e.IsDeleted).HasColumnName("IsDeleted");
+
+            entity.Property(e => e.IsActive).HasColumnName("IsActive");
+        });
+
+        modelBuilder.Entity<TblPromocodeUsage>(entity =>
+        {
+            entity.ToTable("tbl_promocode_usage","dbo");
+
+            entity.HasKey(e => e.UsageId);
+
+            entity.Property(e => e.UsageId).HasColumnName("usage_id");
+
+            entity.Property(e => e.PromoId)
+                .IsRequired()
+                .HasColumnName("promo_id");
+
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id");
+
+            entity.Property(e => e.UsedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("used_at");
+        });
+
+
         modelBuilder.Entity<VwUserrefercode>(entity =>
         {
             entity
@@ -1567,6 +1651,12 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CompanyName)
                 .HasMaxLength(100)
                 .HasColumnName("companyName");
+            entity.Property(e => e.CategoryNAme)
+                .HasMaxLength(100)
+                .HasColumnName("categoryName");
+            entity.Property(e => e.SubcategoryName)
+                .HasMaxLength(100)
+                .HasColumnName("SubcategoryName");
             entity.Property(e => e.Cuserid).HasColumnName("cuserid");
             entity.Property(e => e.Discountprice)
                 .HasMaxLength(200)

@@ -41,11 +41,22 @@ public class AuthController : ControllerBase
         if (!IsValidMobileNumber(request?.MobileNumber))
             return BadRequest(new { message = "Invalid mobile number" });
 
-        var otpSent = await _otpService.SendOTPAsync(request.MobileNumber!);
-        return !string.IsNullOrEmpty(otpSent)
-            ? Ok(new { message = "OTP sent." })
-            : StatusCode(500, new { message = "Failed to send OTP." });
+        var result = await _otpService.SendOTPAsync(request.MobileNumber!);
+
+        if (result.Success)
+        {
+            return Ok(new { message = "OTP sent successfully." });
+        }
+        else
+        {
+            return StatusCode(500, new
+            {
+                message = "Failed to send OTP.",
+                error = result.ErrorMessage ?? "Unknown error"
+            });
+        }
     }
+
 
     // 2. Login
     [HttpPost("login")]
@@ -94,13 +105,15 @@ public class AuthController : ControllerBase
         if (!IsValidMobileNumber(request?.Phone) || string.IsNullOrWhiteSpace(request?.Name))
             return BadRequest(new { message = "Name and valid mobile number are required." });
 
-        var existingUser = await GetUserByPhoneAsync(request.Phone!);
-        if (existingUser != null)
+        // Check if user already exists in TblUsers
+        var existingTblUser = await GetUserByPhoneAsync(request.Phone!);
+        if (existingTblUser != null)
             return Conflict(new { message = "User already exists. Please login." });
 
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
+            // Create user in TblUsers (your main user table)
             var user = new TblUser
             {
                 Phone = request.Phone,
@@ -113,7 +126,15 @@ public class AuthController : ControllerBase
             _context.TblUsers.Add(user);
             await _context.SaveChangesAsync();
 
-            // Check referral code before creating user
+            // Clean up temporary OTP user from Users table if it exists
+            var tempOtpUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserContact == request.Phone && u.UserType == "OTP_TEMP");
+            if (tempOtpUser != null)
+            {
+                _context.Users.Remove(tempOtpUser);
+            }
+
+            // Rest of your referral code logic remains the same...
             if (!string.IsNullOrWhiteSpace(request.RefferalCode))
             {
                 var inviter = await _context.VwUserrefercodes
@@ -167,7 +188,7 @@ public class AuthController : ControllerBase
                         await _notificationService.CreateNotificationAsync(new CreateNotificationDto
                         {
                             UserId = inviter.Id,
-                            Urlt = "/wallet",
+                            Urlt = "/home/wallet",
                             Title = "Referral Bonus 🎉",
                             Message = $"You received ₹50 for referring {user.ContactPerson}.",
                         });
@@ -175,7 +196,7 @@ public class AuthController : ControllerBase
                         await _notificationService.CreateNotificationAsync(new CreateNotificationDto
                         {
                             UserId = user.Id,
-                            Urlt = "/wallet",
+                            Urlt = "/home/wallet",
                             Title = "Welcome Reward 🎁",
                             Message = $"You received ₹50 for using a referral code!",
                         });

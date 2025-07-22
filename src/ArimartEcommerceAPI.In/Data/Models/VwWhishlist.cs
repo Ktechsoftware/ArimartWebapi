@@ -58,6 +58,9 @@ public partial class VwWhishlist
     public string? Phone { get; set; }
 
     public string? CompanyName { get; set; }
+    public string? CategoryNAme { get; set; }
+    public string? SubcategoryName { get; set; }
+
 
     public long? Shopid { get; set; }
 }

@@ -360,21 +360,57 @@ namespace ArimartEcommerceAPI.Controllers
 
         [AllowAnonymous]
         [HttpGet("current-running")]
-        public async Task<IActionResult> GetCurrentRunningGroups()
+        public async Task<IActionResult> GetCurrentRunningGroups(
+       [FromQuery] int page = 1,
+       [FromQuery] int pageSize = 10)
         {
+            // Validate pagination parameters
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            if (pageSize > 100) pageSize = 100; // Prevent excessive page sizes
+
             var now = DateTime.UtcNow;
 
-            var runningGroups = await _context.TblGroupbies
+            // Get total count for pagination metadata
+            var totalCount = await _context.VwGroups
+                .Where(g =>
+                    g.EventSend1 != null &&
+                    g.EventSend1 > now &&
+                    g.IsDeleted == false
+                )
+                .CountAsync();
+
+            // Get paginated results
+            var runningGroups = await _context.VwGroups
                 .Where(g =>
                     g.EventSend1 != null &&
                     g.EventSend1 > now &&
                     g.IsDeleted == false
                 )
                 .OrderBy(g => g.EventSend1)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
-            return Ok(runningGroups);
-        }
 
+            // Calculate pagination metadata
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            var response = new
+            {
+                Data = runningGroups,
+                Pagination = new
+                {
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    HasPreviousPage = page > 1,
+                    HasNextPage = page < totalPages
+                }
+            };
+
+            return Ok(response);
+        }
         [AllowAnonymous]
         [HttpGet("status-short/{gid}")]
         public async Task<IActionResult> GetGroupShortStatus(long gid)
