@@ -109,6 +109,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<TblUserReferral> TblUserReferrals { get; set; }
     public virtual DbSet<TblPromocode> TblPromocodes { get; set; }
     public virtual DbSet<TblPromocodeUsage> TblPromocodeUsages { get; set; }
+    public virtual DbSet<TblPromoProduct> TblPromoProducts { get; set; }
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -1045,6 +1046,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("netprice");
             entity.Property(e => e.PPros).HasColumnName("p_pros");
             entity.Property(e => e.Pdid).HasColumnName("pdid");
+            entity.Property(e => e.Unit).HasColumnName("unit");
             entity.Property(e => e.Phone)
                 .HasMaxLength(20)
                 .IsUnicode(false);
@@ -1065,6 +1067,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.VendorName)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+            entity.Property(e => e.GroupCode)
+                .HasMaxLength(100)
+                .HasColumnName("groupcode");
         });
 
         modelBuilder.Entity<VwCartold>(entity =>
@@ -1282,6 +1287,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Discountprice)
                 .HasMaxLength(200)
                 .HasColumnName("discountprice");
+            entity.Property(e => e.Unit).HasColumnName("unit");
             entity.Property(e => e.EventSend1).HasColumnType("datetime");
             entity.Property(e => e.Gid).HasColumnName("gid");
             entity.Property(e => e.Gprice)
@@ -1323,6 +1329,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.VendorName)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+                entity.Property(e => e.GroupCode)
+                .HasMaxLength(100)
+                .HasColumnName("groupcode");
         });
 
         modelBuilder.Entity<VwGroup1>(entity =>
@@ -1482,6 +1491,7 @@ public partial class ApplicationDbContext : DbContext
                 .ToView("vw_Product", "dbo");
 
             entity.Property(e => e.AddedDate).HasColumnType("datetime");
+            entity.Property(e => e.Unit).HasColumnType("unit");
             entity.Property(e => e.CategoryName)
                 .HasMaxLength(200)
                 .HasColumnName("categoryName");
@@ -1532,6 +1542,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Wweight)
                 .HasMaxLength(200)
                 .HasColumnName("wweight");
+            entity.Property(e => e.GroupCode)
+                .HasMaxLength(200)
+                .HasColumnName("groupcode");
         });
 
         modelBuilder.Entity<TblPromocode>(entity =>
@@ -1590,6 +1603,15 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("ModifiedDate");
 
+            entity.Property(e => e.RewardType)
+                .HasMaxLength(30)
+                .HasColumnName("reward_type")
+                .HasDefaultValue("PROMO_CODE");
+
+            entity.Property(e => e.Title)
+                .HasMaxLength(100)
+                .HasColumnName("title");
+
             entity.Property(e => e.IsDeleted).HasColumnName("IsDeleted");
 
             entity.Property(e => e.IsActive).HasColumnName("IsActive");
@@ -1610,9 +1632,32 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UserId)
                 .HasColumnName("user_id");
 
+            entity.Property(e => e.OrderId)
+                .HasColumnName("OrderId");
+
             entity.Property(e => e.UsedAt)
                 .HasColumnType("datetime")
                 .HasColumnName("used_at");
+            entity.Property(e => e.ScratchRevealed)
+                .HasColumnName("scratch_revealed");
+        });
+
+        modelBuilder.Entity<TblPromoProduct>(entity =>
+        {
+            entity.ToTable("tbl_promocode_products", "dbo");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasColumnName("id");
+
+            entity.Property(e => e.PromoId)
+                .HasColumnName("promo_id")
+                .IsRequired();
+
+            entity.Property(e => e.ProductId)
+                .HasColumnName("product_id")
+                .IsRequired();
         });
 
 

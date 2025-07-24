@@ -16,6 +16,7 @@ public partial class VwProduct
     public string? Keywords { get; set; }
 
     public int? Categoryid { get; set; }
+    public string? Unit { get; set; }
 
     public int? Subcategoryid { get; set; }
     public int? ChildCategoryId { get; set; }
@@ -65,4 +66,5 @@ public partial class VwProduct
     public string? CompanyName { get; set; }
 
     public string? ProductNameShort { get; set; }
+    public string? GroupCode { get; set; }
 }

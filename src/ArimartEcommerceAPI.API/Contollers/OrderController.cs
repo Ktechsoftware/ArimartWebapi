@@ -53,8 +53,31 @@ public class OrderController : ControllerBase
                 IsActive = true
             }).ToList();
 
+            // ✅ Save orders first to get generated IDs
             await _context.TblOrdernows.AddRangeAsync(newOrders);
+            await _context.SaveChangesAsync(); // Save to generate IDs
 
+            // ✅ Now add promo usage with actual order IDs
+            if (!string.IsNullOrEmpty(request.PromoCode))
+            {
+                var promo = await _context.TblPromocodes.FirstOrDefaultAsync(p => p.Code == request.PromoCode);
+                if (promo != null)
+                {
+                    // Add promo usage for each order
+                    foreach (var order in newOrders)
+                    {
+                        _context.TblPromocodeUsages.Add(new TblPromocodeUsage
+                        {
+                            PromoId = promo.PromoId,
+                            UserId = request.Userid,
+                            UsedAt = DateTime.Now,
+                            OrderId = order.Id
+                        });
+                    }
+                }
+            }
+
+            // Update cart items
             foreach (var item in cartItems)
             {
                 if (item.Groupid != null)
@@ -66,10 +89,10 @@ public class OrderController : ControllerBase
                 {
                     item.IsDeleted = true;
                 }
-
                 item.ModifiedDate = DateTime.UtcNow;
             }
 
+            // ✅ Final save for promo usage and cart updates
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Checkout successful.", orderid = trackId });
@@ -141,7 +164,6 @@ public class OrderController : ControllerBase
     {
         var baseQuery = from order in _context.TblOrdernows
                         where order.Userid == userid
-                              && !order.IsDeleted
                         join p in _context.VwProducts on (int?)order.Pdid equals (int?)p.Pdid into pJoin
                         from p in pJoin.DefaultIfEmpty()
                         join c in _context.TblCategories on (p != null ? p.Categoryid : (int?)null) equals (int?)c.Id into cJoin
@@ -160,10 +182,14 @@ public class OrderController : ControllerBase
                             order.Deliveryprice,
                             ProductName = p != null ? p.ProductName : null,
                             ProductImage = p != null ? p.Image : null,
+                            Unit = p != null ? p.Wtype : null,
+                            GroupCode = p != null ? p.GroupCode : null,
                             CategoryName = c != null ? c.CategoryName : null,
                             SubCategoryName = sc != null ? sc.SubcategoryName : null,
                             ChildCategoryName = cc != null ? cc.ChildcategoryName : null,
-                            Status = order.DdeliverredidTime != null ? "Delivered"
+
+                            Status = order.IsDeleted ? "Canceled"
+                                    : order.DdeliverredidTime != null ? "Delivered"
                                     : order.ShipOrderidTime != null ? "Shipped"
                                     : order.DvendorpickupTime != null ? "Picked Up"
                                     : order.DassignidTime != null ? "Assigned"
@@ -179,7 +205,6 @@ public class OrderController : ControllerBase
             .OrderByDescending(o => o.AddedDate)
             .ToListAsync();
 
-        // Group by TrackId to show orders with same track ID together
         var groupedOrders = orders
             .GroupBy(o => o.TrackId)
             .Select(g => new
@@ -188,12 +213,14 @@ public class OrderController : ControllerBase
                 OrderDate = g.First().AddedDate,
                 TotalItems = g.Count(),
                 TotalAmount = g.Sum(o => o.Deliveryprice * o.Qty),
-                Status = g.First().Status, // Assuming all items in same track have same status
+                Status = g.First().Status,
                 Items = g.Select(o => new
                 {
                     o.Id,
                     o.Qty,
                     o.Groupid,
+                    o.GroupCode,
+                    o.Unit,
                     o.Deliveryprice,
                     o.ProductName,
                     o.ProductImage,
@@ -209,13 +236,13 @@ public class OrderController : ControllerBase
         return Ok(groupedOrders);
     }
 
+
     [HttpGet("history/{userid}/{groupid}")]
     public async Task<IActionResult> GetGroupOrderHistory(int userid, long groupid)
     {
         var orders = from order in _context.TblOrdernows
                      where order.Userid == userid
                            && order.Groupid == groupid
-                           && !order.IsDeleted
                      join p in _context.VwProducts on (int?)order.Pdid equals (int?)p.Pdid into pJoin
                      from p in pJoin.DefaultIfEmpty()
                      join c in _context.TblCategories on (p != null ? p.Categoryid : (int?)null) equals (int?)c.Id into cJoin
@@ -234,14 +261,17 @@ public class OrderController : ControllerBase
                          order.Deliveryprice,
                          ProductName = p != null ? p.ProductName : null,
                          ProductImage = p != null ? p.Image : null,
+                         Unit = p != null ? p.Wtype : null,
+                         GroupCode = p != null ? p.GroupCode : null,
                          CategoryName = c != null ? c.CategoryName : null,
                          SubCategoryName = sc != null ? sc.SubcategoryName : null,
                          ChildCategoryName = cc != null ? cc.ChildcategoryName : null,
-                         Status = order.DdeliverredidTime != null ? "Delivered"
-                                 : order.ShipOrderidTime != null ? "Shipped"
-                                 : order.DvendorpickupTime != null ? "Picked Up"
-                                 : order.DassignidTime != null ? "Assigned"
-                                 : "Placed"
+                         Status = order.IsDeleted ? "Canceled"
+                                    : order.DdeliverredidTime != null ? "Delivered"
+                                    : order.ShipOrderidTime != null ? "Shipped"
+                                    : order.DvendorpickupTime != null ? "Picked Up"
+                                    : order.DassignidTime != null ? "Assigned"
+                                    : "Placed"
                      };
 
         var result = await orders.ToListAsync();
@@ -262,6 +292,11 @@ public class OrderController : ControllerBase
             from sc in scJoin.DefaultIfEmpty()
             join cc in _context.TblChildSubcategories on (p != null ? p.ChildCategoryId : (int?)null) equals (int?)cc.Id into ccJoin
             from cc in ccJoin.DefaultIfEmpty()
+            join pu in _context.TblPromocodeUsages on order.Id equals pu.OrderId into puJoin
+            from pu in puJoin.DefaultIfEmpty()
+            join promo in _context.TblPromocodes on pu.PromoId equals promo.PromoId into promoJoin
+            from promo in promoJoin.DefaultIfEmpty()
+
             where order.TrackId == trackId && !order.IsDeleted
             select new
             {
@@ -293,8 +328,17 @@ public class OrderController : ControllerBase
                     Image = p != null ? p.Image : null,
                     Price = p != null ? p.Price : null,
                     Unit = p != null ? p.Wtype : null,
-                    Weight = p != null ? p.Wweight : null
+                    Weight = p != null ? p.Wweight : null,
+                    Groupcode = p != null ? p.GroupCode : null,
                 },
+                AppliedPromo = promo != null ? new
+                {
+                    promo.Code,
+                    promo.Description,
+                    promo.DiscountType,
+                    promo.DiscountValue,
+                    promo.MaxDiscount
+                } : null,
 
                 Category = new
                 {
@@ -323,7 +367,8 @@ public class OrderController : ControllerBase
             OrderDate = orders.First().AddedDate,
             TotalItems = orders.Count,
             TotalAmount = orders.Sum(o => o.Deliveryprice * o.Qty),
-            OverallStatus = orders.First().Status, // You might want to calculate this based on all items
+            OverallStatus = orders.First().Status,
+            AppliedPromo = orders.First().AppliedPromo,
             Items = orders.Select(order => new
             {
                 order.Id,
@@ -391,4 +436,11 @@ public class OrderController : ControllerBase
         return $"ORD-{datePart}{randomPart}"; // e.g., "ORD-221540A9" (8 characters after ORD-)
     }
 
+    public class ApplyPromoRequest
+    {
+        public string? Code { get; set; }
+        public int UserId { get; set; }
+        public decimal OrderAmount { get; set; }
+        public int? OrderId { get; set; }
+    }
 }

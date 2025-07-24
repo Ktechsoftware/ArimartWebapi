@@ -441,7 +441,50 @@ namespace ArimartEcommerceAPI.Controllers
 
         }
 
+        // search by group code
+        [AllowAnonymous]
+        [HttpGet("by-refercode/{referCode}")]
+        public async Task<ActionResult> GetGroupByReferCode(string referCode)
+        {
+            var referCodeData = await _context.VwGrouprefercodes
+                .FirstOrDefaultAsync(r => r.Refercode == referCode);
 
+            if (referCodeData == null)
+            {
+                return Ok(new
+                {
+                    gid = (long?)null,
+                    message = "Group code is not match please check code and search again",
+                    STATUS = 0
+                });
+            }
+
+            // 🛠️ Try to find group from PID/PDID if GID is not available
+            var group = await _context.VwGroups
+                .FirstOrDefaultAsync(g =>
+                    g.Pid == referCodeData.Pid &&
+                    g.Pdid == referCodeData.Pdid &&
+                    g.IsDeleted == false);
+
+            if (group == null)
+            {
+                return Ok(new
+                {
+                    gid = (long?)null,
+                    message = "Group not found for this group code",
+                    STATUS = 0
+                });
+            }
+
+            return Ok(new
+            {
+                gid = group.Gid,
+                message = "Awesome! Group found.",
+                STATUS = 1
+            });
+        }
+
+       
 
     }
 

@@ -8,20 +8,10 @@ using System.Threading.Tasks;
 
 namespace ArimartEcommerceAPI.Infrastructure.Data.Models
 {
-    public class TblPromocodeUsage
+    public class TblPromoProduct
     {
-        [Key]
-        public int UsageId { get; set; }
-
-        [Required]
+        public int Id { get; set; }
         public int PromoId { get; set; }
-
-        public int UserId { get; set; }
-        public long? OrderId { get; set; }
-
-
-        public DateTime UsedAt { get; set; } = DateTime.Now;
-        public bool ScratchRevealed { get; set; } = false;
-
+        public int ProductId { get; set; }
     }
 }

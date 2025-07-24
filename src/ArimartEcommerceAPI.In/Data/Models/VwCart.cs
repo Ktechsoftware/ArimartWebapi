@@ -37,7 +37,7 @@ public partial class VwCart
     public long? Pid { get; set; }
 
     public long? Pdid { get; set; }
-
+    public string? Unit { get; set; }
     public string? Image { get; set; }
 
     public string? Discountprice { get; set; }
@@ -67,4 +67,5 @@ public partial class VwCart
     public string? Phone { get; set; }
 
     public decimal? Qtyprice { get; set; }
+    public string? GroupCode { get; set; }
 }

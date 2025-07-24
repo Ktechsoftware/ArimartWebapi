@@ -4,6 +4,7 @@
     {
         public int Userid { get; set; }
         public int? Sipid { get; set; }
-        public string Addid { get; set; } = string.Empty; // Comma-separated cart item IDs
+        public string Addid { get; set; } = string.Empty;
+        public string? PromoCode { get; set; }
     }
 }

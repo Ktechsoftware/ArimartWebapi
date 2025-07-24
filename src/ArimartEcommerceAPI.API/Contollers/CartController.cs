@@ -89,6 +89,7 @@ public class CartController : ControllerBase
             discountprice = c.Discountprice,
             totalprice = c.Totalprice,
             gprice = c.Gprice,
+            unittype = c.Unit,
             gqty = c.Gqty,
             image = c.Image,
             categoryId = c.Categoryid,
@@ -100,7 +101,8 @@ public class CartController : ControllerBase
             groupid = c.Groupid,
             vendorName = c.VendorName,
             userPhone = c.Phone,
-            qtyprice = c.Qtyprice
+            qtyprice = c.Qtyprice,
+            groupcode = c.GroupCode
         }).ToList();
 
         var totalItems = result.Sum(i => i.quantity);
@@ -208,6 +210,47 @@ public class CartController : ControllerBase
         return Ok(new { message = "Cart cleared" });
     }
 
+    // Add these methods to your CartController class
+
+    [HttpDelete("group/{userId}/{groupId}")]
+    public async Task<IActionResult> ClearGroupCart(int userId, long groupId)
+    {
+        var items = await _context.TblAddcarts
+            .Where(c => c.Userid == userId && c.Groupid == groupId && !c.IsDeleted)
+            .ToListAsync();
+
+        if (!items.Any())
+            return NotFound("Group cart already empty");
+
+        foreach (var item in items)
+        {
+            item.IsDeleted = true;
+            item.ModifiedDate = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Group cart cleared" });
+    }
+
+    [HttpDelete("allgroups/{userId}")]
+    public async Task<IActionResult> ClearAllGroupCarts(int userId)
+    {
+        var items = await _context.TblAddcarts
+            .Where(c => c.Userid == userId && c.Groupid != null && !c.IsDeleted)
+            .ToListAsync();
+
+        if (!items.Any())
+            return NotFound("No group cart items found");
+
+        foreach (var item in items)
+        {
+            item.IsDeleted = true;
+            item.ModifiedDate = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "All group carts cleared" });
+    }
 
     [HttpGet("usergroup")]
     public async Task<IActionResult> GetGroupCart(int userId, long groupId)
@@ -226,6 +269,7 @@ public class CartController : ControllerBase
             pdid = c.Pdid,
             name = c.ProductName,
             price = decimal.TryParse(c.Netprice, out var p) ? p : 0,
+            unittype = c.Unit,
             netprice = c.Netprice,
             discountprice = c.Discountprice,
             totalprice = c.Totalprice,
@@ -241,7 +285,8 @@ public class CartController : ControllerBase
             groupid = c.Groupid,
             vendorName = c.VendorName,
             userPhone = c.Phone,
-            qtyprice = c.Qtyprice
+            qtyprice = c.Qtyprice,
+            groupcode = c.GroupCode // Include group code if available
         }).ToList();
 
         var totalItems = result.Sum(i => i.quantity);
@@ -273,6 +318,7 @@ public class CartController : ControllerBase
                 pid = c.Pid,
                 pdid = c.Pdid,
                 name = c.ProductName,
+                unittype = c.Unit,
                 price = netPrice,
                 netprice = c.Netprice,
                 discountprice = c.Discountprice,
@@ -289,7 +335,8 @@ public class CartController : ControllerBase
                 groupid = c.Groupid,
                 vendorName = c.VendorName,
                 userPhone = c.Phone,
-                qtyprice = c.Qtyprice
+                qtyprice = c.Qtyprice,
+                groupcode = c.GroupCode // Include group code if available
             };
         }).ToList();
 

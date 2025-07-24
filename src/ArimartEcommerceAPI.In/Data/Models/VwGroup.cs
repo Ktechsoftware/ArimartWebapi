@@ -34,6 +34,7 @@ public partial class VwGroup
     public long? Pid { get; set; }
 
     public long? Pdid { get; set; }
+    public string? Unit { get; set; }
 
     public string? Image { get; set; }
 
@@ -72,4 +73,5 @@ public partial class VwGroup
     public string? VendorName { get; set; }
 
     public string? Image1 { get; set; }
+    public string? GroupCode { get; set; }
 }
