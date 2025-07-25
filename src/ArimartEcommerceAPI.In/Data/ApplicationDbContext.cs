@@ -102,6 +102,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<VwOrder> VwOrders { get; set; }
 
     public virtual DbSet<VwProduct> VwProducts { get; set; }
+    public virtual DbSet<VwTopProducts> VwTopProducts { get; set; }
 
     public virtual DbSet<VwUserrefercode> VwUserrefercodes { get; set; }
 
@@ -1545,6 +1546,73 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.GroupCode)
                 .HasMaxLength(200)
                 .HasColumnName("groupcode");
+        });
+
+        modelBuilder.Entity<VwTopProducts>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("vw_TopProducts", "dbo");
+
+            entity.Property(e => e.AddedDate).HasColumnType("datetime");
+            entity.Property(e => e.Unit).HasColumnType("unit");
+            entity.Property(e => e.CategoryName)
+                .HasMaxLength(200)
+                .HasColumnName("categoryName");
+            entity.Property(e => e.Categoryid).HasColumnName("categoryid");
+            entity.Property(e => e.ChildCategoryId).HasColumnName("ChildCategoryId");
+            entity.Property(e => e.CompanyName).HasMaxLength(100);
+            entity.Property(e => e.Discountprice)
+                .HasMaxLength(200)
+                .HasColumnName("discountprice");
+            entity.Property(e => e.Gprice)
+                .HasMaxLength(200)
+                .HasColumnName("gprice");
+            entity.Property(e => e.Gqty)
+                .HasMaxLength(200)
+                .HasColumnName("gqty");
+            entity.Property(e => e.Gst)
+                .HasMaxLength(200)
+                .HasColumnName("gst");
+            entity.Property(e => e.Id).HasColumnName("ID");
+            entity.Property(e => e.Image).HasMaxLength(200);
+            entity.Property(e => e.Keywords).HasColumnName("keywords");
+            entity.Property(e => e.Longdesc).HasColumnName("longdesc");
+            entity.Property(e => e.ModifiedDate).HasColumnType("datetime");
+            entity.Property(e => e.Netprice)
+                .HasMaxLength(200)
+                .HasColumnName("netprice");
+            entity.Property(e => e.PPros).HasColumnName("p_pros");
+            entity.Property(e => e.SpecialTags).HasColumnName("specialtags");
+            entity.Property(e => e.Pdid).HasColumnName("pdid");
+            entity.Property(e => e.Price)
+                .HasMaxLength(200)
+                .HasColumnName("price");
+            entity.Property(e => e.ProductName).HasMaxLength(200);
+            entity.Property(e => e.ProductNameShort).HasMaxLength(203);
+            entity.Property(e => e.Shortdesc).HasColumnName("shortdesc");
+            entity.Property(e => e.SubcategoryName).HasMaxLength(200);
+            entity.Property(e => e.Totalprice)
+                .HasMaxLength(200)
+                .HasColumnName("totalprice");
+            entity.Property(e => e.Userid).HasColumnName("userid");
+            entity.Property(e => e.VendorName)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("vendorName");
+            entity.Property(e => e.Wtype)
+                .HasMaxLength(200)
+                .HasColumnName("wtype");
+            entity.Property(e => e.Wweight)
+                .HasMaxLength(200)
+                .HasColumnName("wweight");
+            entity.Property(e => e.GroupCode)
+                .HasMaxLength(200)
+                .HasColumnName("groupcode");
+            entity.Property(e => e.CastedPrice)
+                .HasColumnName("CastedPrice")
+                .HasColumnType("decimal(10,2)");
+
         });
 
         modelBuilder.Entity<TblPromocode>(entity =>

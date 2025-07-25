@@ -155,13 +155,12 @@ public class TopController : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("products/under-9")]
-    public async Task<ActionResult<List<VwProduct>>> GetTopProductsUnder9([FromQuery] int limit = 10)
+    public async Task<ActionResult<List<VwTopProducts>>> GetTopProductsUnder9([FromQuery] int limit = 10)
     {
         if (limit < 1 || limit > 50) limit = 10;
 
-        var products = await _context.VwProducts
-            .Where(p => p.IsDeleted == false && p.IsActive == true && (
-                p.Price == "9" || p.Price == "9.0" || p.Price == "9.00"))
+        var products = await _context.VwTopProducts
+            .Where(p => p.IsDeleted == false && p.IsActive == true && p.CastedPrice <= 9)
             .OrderByDescending(p => p.AddedDate)
             .Take(limit)
             .ToListAsync();
@@ -170,16 +169,29 @@ public class TopController : ControllerBase
     }
 
     [AllowAnonymous]
-    [HttpGet("products/under-99")]
-    public async Task<ActionResult<List<VwProduct>>> GetTopProductsUnder99([FromQuery] int limit = 10)
+    [HttpGet("products/under-49")]
+    public async Task<ActionResult<List<VwTopProducts>>> GetTopProductsUnder49([FromQuery] int limit = 10)
     {
         if (limit < 1 || limit > 50) limit = 10;
 
-        var products = await _context.VwProducts
+        var products = await _context.VwTopProducts
             .Where(p => p.IsDeleted == false && p.IsActive == true &&
-                (p.Price == "10" || p.Price == "10.0" || p.Price == "10.00" ||
-                 (string.Compare(p.Price, "9", StringComparison.OrdinalIgnoreCase) > 0 &&
-                  string.Compare(p.Price, "99.99", StringComparison.OrdinalIgnoreCase) <= 0)))
+                        p.CastedPrice > 9 && p.CastedPrice <= 49)
+            .OrderByDescending(p => p.AddedDate)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(products);
+    }
+    [AllowAnonymous]
+    [HttpGet("products/under-99")]
+    public async Task<ActionResult<List<VwTopProducts>>> GetTopProductsUnder99([FromQuery] int limit = 10)
+    {
+        if (limit < 1 || limit > 50) limit = 10;
+
+        var products = await _context.VwTopProducts
+            .Where(p => p.IsDeleted == false && p.IsActive == true &&
+                        p.CastedPrice > 49 && p.CastedPrice <= 99)
             .OrderByDescending(p => p.AddedDate)
             .Take(limit)
             .ToListAsync();
@@ -189,14 +201,13 @@ public class TopController : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("products/under-999")]
-    public async Task<ActionResult<List<VwProduct>>> GetTopProductsUnder999([FromQuery] int limit = 10)
+    public async Task<ActionResult<List<VwTopProducts>>> GetTopProductsUnder999([FromQuery] int limit = 10)
     {
         if (limit < 1 || limit > 50) limit = 10;
 
-        var products = await _context.VwProducts
+        var products = await _context.VwTopProducts
             .Where(p => p.IsDeleted == false && p.IsActive == true &&
-                string.Compare(p.Price, "99", StringComparison.OrdinalIgnoreCase) > 0 &&
-                string.Compare(p.Price, "999.99", StringComparison.OrdinalIgnoreCase) <= 0)
+                        p.CastedPrice > 99 && p.CastedPrice <= 999)
             .OrderByDescending(p => p.AddedDate)
             .Take(limit)
             .ToListAsync();
