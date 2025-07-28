@@ -25,6 +25,15 @@ namespace ArimartEcommerceAPI.API.Contollers
             return long.TryParse(userIdClaim, out var userId) ? userId : 0;
         }
 
+        [HttpPost]
+        [Route("api/send-notification")]
+        public async Task<IActionResult> SendPush([FromQuery] string token)
+        {
+            var fcm = new FcmPushService();
+            bool success = await fcm.SendNotificationAsync(token, "Order Confirmed", "Your order is on its way!");
+            return Ok(success ? "Notification sent ✅" : "Notification failed ❌");
+        }
+
         [AllowAnonymous]
         [HttpGet]
         public async Task<ActionResult<ApiResponse<NotificationListResponse>>> GetNotifications(

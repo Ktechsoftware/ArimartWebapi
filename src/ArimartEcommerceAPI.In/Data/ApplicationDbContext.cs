@@ -111,6 +111,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<TblPromocode> TblPromocodes { get; set; }
     public virtual DbSet<TblPromocodeUsage> TblPromocodeUsages { get; set; }
     public virtual DbSet<TblPromoProduct> TblPromoProducts { get; set; }
+    public virtual DbSet<FcmDeviceToken> FcmDeviceTokens { get; set; }
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -168,6 +169,35 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(30)
                 .IsUnicode(false)
                 .HasColumnName("ad_name");
+        });
+
+        modelBuilder.Entity<FcmDeviceToken>(entity =>
+        {
+            entity.ToTable("FcmDeviceToken"); // Use your schema and table name
+
+            entity.HasKey(e => e.Id); // Primary key
+
+            entity.Property(e => e.Id)
+                .HasColumnName("Id");
+
+            entity.Property(e => e.UserId)
+                .HasColumnName("UserId")
+                .IsRequired();
+
+            entity.Property(e => e.Token)
+                .HasColumnName("Token")
+                .HasMaxLength(512)
+                .IsRequired();
+
+            entity.Property(e => e.DeviceType)
+                .HasColumnName("DeviceType")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("CreatedAt")
+                .HasPrecision(0)
+                .HasDefaultValueSql("GETDATE()");
         });
 
 

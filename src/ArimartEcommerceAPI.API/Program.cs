@@ -58,7 +58,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHttpClient();
-//builder.Services.AddSingleton<IOTPService, MockOTPService>();
+builder.Services.AddScoped<IFcmPushService, FcmPushService>();
 builder.Services.AddScoped<IOTPService, OTPService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -69,18 +69,26 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-                "https://arimartreact.kuldeepchaurasia.in",
-                "http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials(); // Important for SignalR & cookies
+        policy
+            .WithOrigins(
+                "https://arimartreact.kuldeepchaurasia.in", // ✅ Only your frontend
+                "capacitor://localhost",                    // ✅ For mobile
+                "http://localhost:5173"                     // ✅ For dev
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); // 🔥 only if you send cookies/signalR
     });
 });
 
 
 var app = builder.Build();
 app.UseStaticFiles(); // ✅ Serve files from wwwroot
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseRouting();
 app.UseCors("AllowFrontend");
 app.UseSwagger();

@@ -2,6 +2,7 @@
 using ArimartEcommerceAPI.Infrastructure.Data;
 using ArimartEcommerceAPI.Infrastructure.Data.DTO;
 using ArimartEcommerceAPI.Infrastructure.Data.Models;
+using ArimartEcommerceAPI.Services.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,10 +11,12 @@ using Microsoft.EntityFrameworkCore;
 public class OrderController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+        private readonly IFcmPushService _fcmPushService;
 
-    public OrderController(ApplicationDbContext context)
+    public OrderController(ApplicationDbContext context, IFcmPushService fcmPushService)
     {
         _context = context;
+        _fcmPushService = fcmPushService;
     }
 
     [HttpPost("checkout")]
@@ -53,17 +56,15 @@ public class OrderController : ControllerBase
                 IsActive = true
             }).ToList();
 
-            // ✅ Save orders first to get generated IDs
             await _context.TblOrdernows.AddRangeAsync(newOrders);
-            await _context.SaveChangesAsync(); // Save to generate IDs
+            await _context.SaveChangesAsync();
 
-            // ✅ Now add promo usage with actual order IDs
+            // Add promo usage
             if (!string.IsNullOrEmpty(request.PromoCode))
             {
                 var promo = await _context.TblPromocodes.FirstOrDefaultAsync(p => p.Code == request.PromoCode);
                 if (promo != null)
                 {
-                    // Add promo usage for each order
                     foreach (var order in newOrders)
                     {
                         _context.TblPromocodeUsages.Add(new TblPromocodeUsage
@@ -92,8 +93,22 @@ public class OrderController : ControllerBase
                 item.ModifiedDate = DateTime.UtcNow;
             }
 
-            // ✅ Final save for promo usage and cart updates
             await _context.SaveChangesAsync();
+
+            // 🔔 Send FCM Notification
+            var fcmToken = await _context.FcmDeviceTokens
+                .Where(t => t.UserId == request.Userid)
+                .Select(t => t.Token)
+                .FirstOrDefaultAsync();
+
+            if (!string.IsNullOrEmpty(fcmToken))
+            {
+                await _fcmPushService.SendNotificationAsync(
+                    fcmToken,
+                    "Order Placed ✅",
+                    $"Your order with ID {trackId} has been successfully placed!"
+                );
+            }
 
             return Ok(new { message = "Checkout successful.", orderid = trackId });
         }

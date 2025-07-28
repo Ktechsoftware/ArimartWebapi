@@ -103,54 +103,6 @@ public class TopController : ControllerBase
         }
     }
 
-    [AllowAnonymous]
-    [HttpGet("products")]
-    public async Task<ActionResult<TopProductsResponse>> GetTopProducts([FromQuery] TopProductsRequest request)
-    {
-        if (request.Limit < 1 || request.Limit > 50)
-            request.Limit = 10;
-
-        IQueryable<VwProduct> query = _context.VwProducts
-            .Where(p => p.IsDeleted == false && p.IsActive == true);
-
-        // Exact string match for "9", "99", "999"
-        switch (request.Category)
-        {
-            case 9:
-                query = query.Where(p =>
-                    p.Price == "9" || p.Price == "9.0" || p.Price == "9.00");
-                break;
-            case 99:
-                query = query.Where(p =>
-                    p.Price == "10" || p.Price == "10.0" || p.Price == "10.00" ||
-                    (string.Compare(p.Price, "9", StringComparison.OrdinalIgnoreCase) > 0 &&
-                     string.Compare(p.Price, "99.99", StringComparison.OrdinalIgnoreCase) <= 0));
-                break;
-            case 999:
-                query = query.Where(p =>
-                    string.Compare(p.Price, "99", StringComparison.OrdinalIgnoreCase) > 0 &&
-                    string.Compare(p.Price, "999.99", StringComparison.OrdinalIgnoreCase) <= 0);
-                break;
-            default:
-                return BadRequest("Invalid category. Use 9, 99, or 999.");
-        }
-
-        var topProducts = await query
-            .OrderByDescending(p => p.AddedDate)
-            .Take(request.Limit)
-            .ToListAsync();
-
-        var response = new TopProductsResponse
-        {
-            Category = request.Category,
-            Products = topProducts,
-            Count = topProducts.Count,
-            Message = $"Top {topProducts.Count} products under Rs. {request.Category}"
-        };
-
-        return Ok(response);
-    }
-
     // Optional: Static Endpoints for each category using exact string matching
 
     [AllowAnonymous]
@@ -215,48 +167,6 @@ public class TopController : ControllerBase
         return Ok(products);
     }
 
-    // Combined Endpoint
-    [AllowAnonymous]
-    [HttpGet("products/all-categories")]
-    public async Task<ActionResult<AllCategoriesResponse>> GetAllTopCategories([FromQuery] int limitPerCategory = 5)
-    {
-        if (limitPerCategory < 1 || limitPerCategory > 20) limitPerCategory = 5;
-
-        var under9 = await _context.VwProducts
-            .Where(p => p.IsDeleted == false && p.IsActive == true &&
-                (p.Price == "9" || p.Price == "9.0" || p.Price == "9.00"))
-            .OrderByDescending(p => p.AddedDate)
-            .Take(limitPerCategory)
-            .ToListAsync();
-
-        var under99 = await _context.VwProducts
-            .Where(p => p.IsDeleted == false && p.IsActive == true &&
-                (p.Price == "10" || p.Price == "10.0" || p.Price == "10.00" ||
-                 (string.Compare(p.Price, "9", StringComparison.OrdinalIgnoreCase) > 0 &&
-                  string.Compare(p.Price, "99.99", StringComparison.OrdinalIgnoreCase) <= 0)))
-            .OrderByDescending(p => p.AddedDate)
-            .Take(limitPerCategory)
-            .ToListAsync();
-
-        var under999 = await _context.VwProducts
-            .Where(p => p.IsDeleted == false && p.IsActive == true &&
-                string.Compare(p.Price, "99", StringComparison.OrdinalIgnoreCase) > 0 &&
-                string.Compare(p.Price, "999.99", StringComparison.OrdinalIgnoreCase) <= 0)
-            .OrderByDescending(p => p.AddedDate)
-            .Take(limitPerCategory)
-            .ToListAsync();
-
-        var response = new AllCategoriesResponse
-        {
-            Under9 = under9,
-            Under99 = under99,
-            Under999 = under999,
-            LimitPerCategory = limitPerCategory
-        };
-
-        return Ok(response);
-    }
-
     // Request/Response Models
 
     public class TopProductsRequest
@@ -277,12 +187,5 @@ public class TopController : ControllerBase
         public string Message { get; set; }
     }
 
-    public class AllCategoriesResponse
-    {
-        public List<VwProduct> Under9 { get; set; }
-        public List<VwProduct> Under99 { get; set; }
-        public List<VwProduct> Under999 { get; set; }
-        public int LimitPerCategory { get; set; }
-    }
 
 }

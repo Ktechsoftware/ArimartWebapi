@@ -19,17 +19,20 @@ public class AuthController : ControllerBase
     private readonly ITokenService _tokenService;
     private readonly IOTPService _otpService;
     private readonly INotificationService _notificationService;
+    private readonly IFcmPushService _fcmPushService;
 
     public AuthController(
         ApplicationDbContext context,
         ITokenService tokenService,
         IOTPService otpService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IFcmPushService fcmPushService)
     {
         _context = context;
         _tokenService = tokenService;
         _otpService = otpService;
         _notificationService = notificationService;
+        _fcmPushService = fcmPushService;
     }
 
 
@@ -185,7 +188,7 @@ public class AuthController : ControllerBase
                         }
                     });
 
-                        await _notificationService.CreateNotificationAsync(new CreateNotificationDto
+                    await _notificationService.CreateNotificationAsync(new CreateNotificationDto
                         {
                             UserId = inviter.Id,
                             Urlt = "/home/wallet",
@@ -200,8 +203,40 @@ public class AuthController : ControllerBase
                             Title = "Welcome Reward 🎁",
                             Message = $"You received ₹50 for using a referral code!",
                         });
+                    // ✅ Send FCM to new user
+                    var newUserToken = await _context.FcmDeviceTokens
+                        .Where(t => t.UserId == user.Id)
+                        .Select(t => t.Token)
+                        .FirstOrDefaultAsync();
+
+                    if (!string.IsNullOrEmpty(newUserToken))
+                    {
+                        await _fcmPushService.SendNotificationAsync(
+                            newUserToken,
+                            "Welcome to Arimart 🎉",
+                            "Thanks for using a referral code! ₹50 has been added to your wallet."
+                        );
                     }
+
+                    // ✅ Send FCM to inviter
+                    var inviterToken = await _context.FcmDeviceTokens
+                        .Where(t => t.UserId == inviter.Id)
+                        .Select(t => t.Token)
+                        .FirstOrDefaultAsync();
+
+                    if (!string.IsNullOrEmpty(inviterToken))
+                    {
+                        await _fcmPushService.SendNotificationAsync(
+                            inviterToken,
+                            "Referral Bonus 💰",
+                            $"You've received ₹50 for inviting {user.ContactPerson}!"
+                        );
+                    }
+
+
+
                 }
+            }
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
