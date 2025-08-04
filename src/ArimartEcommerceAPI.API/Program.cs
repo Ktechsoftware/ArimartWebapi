@@ -6,6 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using ArimartEcommerceAPI.Services.Services;
 using ArimartEcommerceAPI.Infrastructure.Data.Repositories;
 using ArimartEcommerceAPI.Infrastructure.Data.Hubs;
+using ArimartEcommerceAPI.API.Middleware;
+using ArimartEcommerceAPI.API.Services.BackgroundServices;
+using Hangfire;
+using Hangfire.SqlServer;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
@@ -35,7 +40,6 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -52,12 +56,29 @@ builder.Services.AddAuthentication("Bearer")
         };
     });
 
+builder.Services.AddHangfire(configuration => configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"), new SqlServerStorageOptions
+    {
+        CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+        QueuePollInterval = TimeSpan.Zero,
+        UseRecommendedIsolationLevel = true,
+        DisableGlobalLocks = true
+    }));
+
+builder.Services.AddHangfireServer();
+
 builder.Services.AddAuthorization();
-builder.Services.AddControllers(); // required for controller support
+builder.Services.AddControllers();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHttpClient();
+builder.Services.AddHostedService<NotificationBackgroundService>();
+builder.Services.AddScoped<IAutomaticNotificationJob, AutomaticNotificationJob>();
 builder.Services.AddScoped<IFcmPushService, FcmPushService>();
 builder.Services.AddScoped<IOTPService, OTPService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -67,43 +88,84 @@ builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
         policy
-            .WithOrigins(
-                "https://arimartreact.kuldeepchaurasia.in", // ✅ Only your frontend
-                "capacitor://localhost",                    // ✅ For mobile
-                "http://localhost:5173"                     // ✅ For dev
-            )
+            .AllowAnyOrigin()
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials(); // 🔥 only if you send cookies/signalR
+            .AllowAnyMethod();
     });
 });
 
-
 var app = builder.Build();
-app.UseStaticFiles(); // ✅ Serve files from wwwroot
+app.UseStaticFiles();
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
 app.UseRouting();
-app.UseCors("AllowFrontend");
+app.UseCors("AllowAll");
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseMiddleware<ApiKeyMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new AllowAllUsersAuthorizationFilter() }
+});
+
 app.MapGet("/", async context =>
 {
     context.Response.Redirect("/docs.html");
     await Task.CompletedTask;
 });
+
 app.UseEndpoints(endpoints =>
 {
     _ = endpoints.MapControllers();
     _ = endpoints.MapHub<NotificationHub>("/notificationHub");
 });
+
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+    recurringJobManager.AddOrUpdate<IAutomaticNotificationJob>(
+        "cart-abandonment",
+        job => job.ProcessCartAbandonmentNotifications(),
+        "*/30 * * * *");
+
+    recurringJobManager.AddOrUpdate<IAutomaticNotificationJob>(
+        "order-status",
+        job => job.ProcessOrderStatusNotifications(),
+        "*/15 * * * *");
+
+    recurringJobManager.AddOrUpdate<IAutomaticNotificationJob>(
+        "group-buy",
+        job => job.ProcessGroupBuyNotifications(),
+        "*/20 * * * *");
+
+    recurringJobManager.AddOrUpdate<IAutomaticNotificationJob>(
+        "recommendations",
+        job => job.ProcessRecommendationNotifications(),
+        "0 10,18 * * *");
+
+    recurringJobManager.AddOrUpdate<IAutomaticNotificationJob>(
+        "price-drops",
+        job => job.ProcessPriceDropNotifications(),
+        "0 9,15 * * *");
+
+    recurringJobManager.AddOrUpdate<IAutomaticNotificationJob>(
+        "inactive-users",
+        job => job.ProcessInactiveUserNotifications(),
+        "0 11 * * 1");
+
+    recurringJobManager.AddOrUpdate<IAutomaticNotificationJob>(
+        "birthday-wishes",
+        job => job.ProcessBirthdayNotifications(),
+        "0 9 * * *");
+}
+
 app.Run();
