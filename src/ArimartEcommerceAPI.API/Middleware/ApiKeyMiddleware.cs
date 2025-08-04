@@ -16,7 +16,7 @@ public class ApiKeyMiddleware
     public async Task InvokeAsync(HttpContext context, IConfiguration config)
     {
         var path = context.Request.Path.Value?.ToLower();
-        if (path == "/" || path == "/docs.html")
+        if (path == "/" || path.StartsWith("/hangfire") || path == "/docs.html")
         {
             await _next(context);
             return;

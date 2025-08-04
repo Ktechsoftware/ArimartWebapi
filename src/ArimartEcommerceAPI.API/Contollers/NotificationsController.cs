@@ -13,10 +13,12 @@ namespace ArimartEcommerceAPI.API.Contollers
     public class NotificationsController : ControllerBase
     {
         private readonly INotificationService _notificationService;
+        private readonly IFcmPushService _fcmPushService;
 
-        public NotificationsController(INotificationService notificationService)
+        public NotificationsController(INotificationService notificationService, IFcmPushService fcmPushService)
         {
             _notificationService = notificationService;
+            _fcmPushService = fcmPushService;
         }
 
         private long GetCurrentUserId()
@@ -29,10 +31,19 @@ namespace ArimartEcommerceAPI.API.Contollers
         [Route("api/send-notification")]
         public async Task<IActionResult> SendPush([FromQuery] string token)
         {
-            var fcm = new FcmPushService();
-            bool success = await fcm.SendNotificationAsync(token, "Order Confirmed", "Your order is on its way!");
-            return Ok(success ? "Notification sent ✅" : "Notification failed ❌");
+            var (success, errorMessage) = await _fcmPushService.SendNotificationAsync(
+                token,
+                "Order Confirmed",
+                "Your order is on its way!"
+            );
+
+            return Ok(new
+            {
+                success,
+                message = success ? "✅ Notification sent" : $"❌ Notification failed: {errorMessage}"
+            });
         }
+
 
         [AllowAnonymous]
         [HttpGet]

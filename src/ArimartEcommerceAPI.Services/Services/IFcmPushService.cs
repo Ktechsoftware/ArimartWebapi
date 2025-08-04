@@ -8,7 +8,7 @@ namespace ArimartEcommerceAPI.Services.Services
 {
     public interface IFcmPushService
     {
-        Task<bool> SendNotificationAsync(string deviceToken, string title, string body);
+        Task<(bool success, string errorMessage)> SendNotificationAsync(string deviceToken, string title, string body);
     }
 
 }
