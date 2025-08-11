@@ -40,14 +40,21 @@ namespace ArimartEcommerceAPI.Controllers
         [HttpGet("{gid}")]
         public async Task<ActionResult<VwGroup>> GetGroupById(long gid)
         {
+            var now = DateTime.UtcNow; // or DateTime.Now if you want local time
+
             var group = await _context.VwGroups
-                .FirstOrDefaultAsync(g => g.Gid == gid && g.IsDeleted1 == false);
+                .FirstOrDefaultAsync(g =>
+                    g.Gid == gid &&
+                    g.IsDeleted1 == false &&
+                    g.EventSend1 > now // Only running groups
+                );
 
             if (group == null)
                 return NotFound();
 
             return Ok(group);
         }
+
 
         // ✅ POST: Create a new group deal (Based on tbl_Groupby table)
         [AllowAnonymous]

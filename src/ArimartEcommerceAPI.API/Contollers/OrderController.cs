@@ -18,7 +18,6 @@ public class OrderController : ControllerBase
         _context = context;
         _fcmPushService = fcmPushService;
     }
-
     [HttpPost("checkout")]
     public async Task<IActionResult> CheckoutCart([FromBody] CartCheckoutRequest request)
     {
@@ -59,7 +58,7 @@ public class OrderController : ControllerBase
             await _context.TblOrdernows.AddRangeAsync(newOrders);
             await _context.SaveChangesAsync();
 
-            // Add promo usage
+            // Promo usage
             if (!string.IsNullOrEmpty(request.PromoCode))
             {
                 var promo = await _context.TblPromocodes.FirstOrDefaultAsync(p => p.Code == request.PromoCode);
@@ -78,7 +77,7 @@ public class OrderController : ControllerBase
                 }
             }
 
-            // Update cart items
+            // Update cart
             foreach (var item in cartItems)
             {
                 if (item.Groupid != null)
@@ -95,28 +94,56 @@ public class OrderController : ControllerBase
 
             await _context.SaveChangesAsync();
 
-            // 🔔 Send FCM Notification
+            // FCM
             var fcmToken = await _context.FcmDeviceTokens
                 .Where(t => t.UserId == request.Userid)
                 .Select(t => t.Token)
                 .FirstOrDefaultAsync();
 
-            if (!string.IsNullOrEmpty(fcmToken))
+            // 🔔 Send FCM Notification
+            string fcmStatus = "FCM not sent";
+
+            try
             {
-                await _fcmPushService.SendNotificationAsync(
-                    fcmToken,
-                    "Order Placed ✅",
-                    $"Your order with ID {trackId} has been successfully placed!"
-                );
+                if (!string.IsNullOrEmpty(fcmToken))
+                {
+                    var (success, error) = await _fcmPushService.SendNotificationAsync(
+                        fcmToken,
+                        "Order Placed ✅",
+                        $"Your order with ID {trackId} has been successfully placed!"
+                    );
+
+                    fcmStatus = success ? "✅ FCM sent successfully." : $"❌ FCM failed: {error}";
+                }
+                else
+                {
+                    fcmStatus = "❌ FCM token not found for user.";
+                }
+            }
+            catch (Exception ex)
+            {
+                fcmStatus = $"❌ FCM exception: {ex.Message}";
             }
 
-            return Ok(new { message = "Checkout successful.", orderid = trackId });
+
+            // 👇 Return everything inside a single "message" string
+            return Ok(new
+            {
+                message = $"Checkout successful ✅\nOrder ID: {trackId}\n{fcmStatus}",
+                orderid = trackId
+            });
+
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Checkout failed.", error = ex.Message });
+            return StatusCode(500, new
+            {
+                message = "Checkout failed.",
+                error = ex.Message
+            });
         }
     }
+
 
     // POST: api/order/place
     [HttpPost("place")]
