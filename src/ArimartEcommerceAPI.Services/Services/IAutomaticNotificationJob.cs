@@ -20,5 +20,7 @@ namespace ArimartEcommerceAPI.Services.Services
         Task ProcessFlashSaleNotifications();
         Task ProcessLowStockNotifications();
         Task ProcessReturnReminderNotifications();
+        Task ProcessGroupStatusNotifications();
+        Task ProcessEnhancedOrderNotifications();
     }
 }

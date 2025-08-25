@@ -21,6 +21,11 @@ public class ApiKeyMiddleware
             await _next(context);
             return;
         }
+        if (context.Request.Path.StartsWithSegments("/Uploads"))
+        {
+            await _next(context);
+            return;
+        }
         if (context.Request.Method.Equals("OPTIONS", StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);

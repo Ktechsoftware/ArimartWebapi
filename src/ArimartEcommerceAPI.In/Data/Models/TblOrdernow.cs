@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ArimartEcommerceAPI.Infrastructure.Data.Models;
 
@@ -59,4 +60,10 @@ public partial class TblOrdernow
     public DateTime? DassignidTime { get; set; }
 
     public decimal? Deliveryprice { get; set; }
+    public int? DeliveryPartnerId { get; set; }
+    public string? DeliveryProofImage { get; set; }
+    public DateTime? DeliveryStartTime { get; set; }
+    public string? DeliveryNotes { get; set; }
+    [ForeignKey("Pid")]
+    public virtual TblProduct? Product { get; set; }
 }

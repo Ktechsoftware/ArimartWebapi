@@ -317,50 +317,81 @@ public class AuthController : ControllerBase
     }
 
     // 6. Update User Info
-    [AllowAnonymous]
     [HttpPut("update-user/{userId}")]
-    public async Task<IActionResult> UpdateUser(long userId, [FromBody] UpdateUserRequest request)
+    public async Task<IActionResult> UpdateUser(long userId, [FromForm] UpdateUserRequest request)
     {
         var user = await _context.TblUsers.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return NotFound(new { message = "User not found." });
 
-        // Update fields if provided
+        // Update basic fields
         if (!string.IsNullOrWhiteSpace(request.Name))
             user.ContactPerson = request.Name;
-
         if (!string.IsNullOrWhiteSpace(request.Email))
             user.Email = request.Email;
+        if (!string.IsNullOrWhiteSpace(request.Gender))
+            user.Gender = request.Gender;
 
-        if (!string.IsNullOrWhiteSpace(request.Address))
-            user.Address = request.Address;
-
-        if (!string.IsNullOrWhiteSpace(request.VendorName))
-            user.VendorName = request.VendorName;
-
-        try
+        // Handle image logic
+        if (request.Image != null && request.Image.Length > 0)
         {
-            await _context.SaveChangesAsync();
+            // Custom image upload
+            var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Upload");
+            if (!Directory.Exists(uploadFolder))
+                Directory.CreateDirectory(uploadFolder);
 
-            return Ok(new
+            var fileName = Guid.NewGuid() + Path.GetExtension(request.Image.FileName);
+            var filePath = Path.Combine(uploadFolder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                user = new
-                {
-                    id = user.Id,
-                    name = user.ContactPerson,
-                    phone = user.Phone,
-                    email = user.Email,
-                    type = user.UserType,
-                    address = user.Address
-                },
-                message = "User information updated successfully."
-            });
+                await request.Image.CopyToAsync(stream);
+            }
+
+            user.Image = fileName;
+            user.UseDefaultAvatar = false;
         }
-        catch (Exception ex)
+        else if (request.UseGenderAvatar && !string.IsNullOrWhiteSpace(request.Gender))
         {
-            return StatusCode(500, new { message = "Failed to update user information." });
+            // Use gender-based default avatar
+            user.Image = null; // Clear custom image
+            user.UseDefaultAvatar = true;
         }
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            user = new
+            {
+                id = user.Id,
+                name = user.ContactPerson,
+                phone = user.Phone,
+                email = user.Email,
+                gender = user.Gender,
+                imageUrl = GetUserImageUrl(user),
+                useDefaultAvatar = user.UseDefaultAvatar
+            },
+            message = "User updated successfully."
+        });
     }
+
+    private string GetUserImageUrl(TblUser user)
+    {
+        if (user.UseDefaultAvatar == true)
+        {
+            // Return gender-based default avatar URLs
+            return user.Gender?.ToLower() switch
+            {
+                "male" => "https://thumbs.dreamstime.com/b/cool-stylish-male-avatar-sunglasses-vector-illustration-profiles-branding-image-features-wearing-characterized-346328055.jpg",
+                "female" => "https://img.freepik.com/premium-vector/cute-woman-avatar-profile-vector-illustration_1058532-14592.jpg",
+                _ => null
+            };
+        }
+
+        return string.IsNullOrEmpty(user.Image) ? null : $"/Upload/{user.Image}";
+    }
+
 
 
     /// ============================================= Auth for delivery users =============================================
@@ -372,21 +403,60 @@ public class AuthController : ControllerBase
         if (!IsValidMobileNumber(request?.Phone) || string.IsNullOrWhiteSpace(request?.Name))
             return BadRequest(new { message = "Name and valid mobile number are required." });
 
-        // Check if user already exists in TblUsers
-        var existingTblUser = await GetDeliveryUserByPhoneAsync(request.Phone!);
-        if (existingTblUser != null)
+        // Check if user already exists in TblDeliveryusers
+        var existingDeliveryUser = await _context.TblDeliveryusers
+            .FirstOrDefaultAsync(u => u.Phone == request.Phone && u.IsDeleted == false);
+
+        if (existingDeliveryUser != null)
             return Conflict(new { message = "User already exists. Please login." });
 
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            // Create user in TblUsers (your main user table)
+            DateTime? dateOfBirth = null;
+            if (!string.IsNullOrWhiteSpace(request.DateOfBirth))
+            {
+                if (DateTime.TryParse(request.DateOfBirth, out var parsedDate))
+                {
+                    dateOfBirth = parsedDate;
+                }
+            }
+
             var deliveryuser = new TblDeliveryuser
             {
+                // Basic Information
                 Phone = request.Phone,
                 ContactPerson = request.Name,
                 Email = request.Email,
-                UserType = "User",
+                UserType = "deliveryuser",
+
+                // Personal Information from form
+                VendorName = request.VendorName,
+                Address = request.Address,
+                City = request.City,
+                State = request.State,
+                PostalCode = request.PostalCode,
+                BankName = request.BankName,
+                AccountNo = request.AccountNo,
+                Ifsccode = request.Ifsccode,
+                Refid = request.Refid,
+                FatherName = request.FatherName,
+                Dob = dateOfBirth,
+                WhatsappNo = request.WhatsappNumber,
+                AlterMobile = request.SecondaryMobile,
+                BloodGroup = request.BloodGroup,
+                LanguageKnown = request.Language,
+
+                // Registration Status Tracking
+                CurrentStep = 2, // Move to documents step after personal info
+                PersonalInfoComplete = true,
+                DocumentsUploaded = false,
+                ProfileComplete = false,
+                RegistrationStatus = "PENDING",
+                IsActive = true,
+                Rating = 0,
+                TotalDeliveries = 0,
+                Country = "India" // Default country
             };
 
             _context.TblDeliveryusers.Add(deliveryuser);
@@ -395,12 +465,13 @@ public class AuthController : ControllerBase
             // Clean up temporary OTP user from Users table if it exists
             var tempOtpUser = await _context.Users
                 .FirstOrDefaultAsync(u => u.UserContact == request.Phone && u.UserType == "OTP_TEMP");
+
             if (tempOtpUser != null)
             {
                 _context.Users.Remove(tempOtpUser);
+                await _context.SaveChangesAsync();
             }
 
-            await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
             var token = _tokenService.CreateToken(deliveryuser);
@@ -416,9 +487,26 @@ public class AuthController : ControllerBase
                     email = deliveryuser.Email,
                     type = "deliveryuser",
                     address = deliveryuser.Address,
-                    //refferalCode = deliveryuser.RefferalCode
+                    city = deliveryuser.City,
+                    state = deliveryuser.State,
+                    fatherName = deliveryuser.FatherName,
+                    dateOfBirth = deliveryuser.Dob?.ToString("yyyy-MM-dd"),
+                    whatsappNumber = deliveryuser.WhatsappNo,
+                    secondaryMobile = deliveryuser.AlterMobile,
+                    bloodGroup = deliveryuser.BloodGroup,
+                    language = deliveryuser.LanguageKnown,
+                    refferalCode = deliveryuser.Refid,
+                    // Registration status
+                    currentStep = deliveryuser.CurrentStep,
+                    personalInfoComplete = deliveryuser.PersonalInfoComplete,
+                    documentsUploaded = deliveryuser.DocumentsUploaded,
+                    profileComplete = deliveryuser.ProfileComplete,
+                    vehicledetail = deliveryuser.Vehicledetail,
+                    bankcomplete = deliveryuser.Bankdetail,
+                    emergencycomplete = deliveryuser.Emergencydetail,
+                    registrationStatus = deliveryuser.RegistrationStatus
                 },
-                message = "Registration successful."
+                message = "Personal information saved successfully. Please proceed to upload documents."
             });
         }
         catch (Exception ex)
@@ -427,7 +515,6 @@ public class AuthController : ControllerBase
             return StatusCode(500, new { message = "Registration failed.", error = ex.Message });
         }
     }
-
     // Delivery User Login  
     [HttpPost("delivery-user/login")]
     [AllowAnonymous]
@@ -462,7 +549,26 @@ public class AuthController : ControllerBase
                 name = deliveryuser.ContactPerson,
                 phone = deliveryuser.Phone,
                 email = deliveryuser.Email,
-                type = deliveryuser.UserType
+                type = "deliveryuser",
+                address = deliveryuser.Address,
+                city = deliveryuser.City,
+                state = deliveryuser.State,
+                fatherName = deliveryuser.FatherName,
+                dateOfBirth = deliveryuser.Dob?.ToString("yyyy-MM-dd"),
+                whatsappNumber = deliveryuser.WhatsappNo,
+                secondaryMobile = deliveryuser.AlterMobile,
+                bloodGroup = deliveryuser.BloodGroup,
+                language = deliveryuser.LanguageKnown,
+                refferalCode = deliveryuser.Refid,
+                // Registration status
+                currentStep = deliveryuser.CurrentStep,
+                personalInfoComplete = deliveryuser.PersonalInfoComplete,
+                documentsUploaded = deliveryuser.DocumentsUploaded,
+                profileComplete = deliveryuser.ProfileComplete,
+                vehicledetail = deliveryuser.Vehicledetail,
+                bankcomplete = deliveryuser.Bankdetail,
+                emergencycomplete = deliveryuser.Emergencydetail,
+                registrationStatus = deliveryuser.RegistrationStatus
             },
             message = "Login successful."
         });
@@ -473,7 +579,9 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetDeliveryUserInfo(long userId)
     {
-        var deliveryuser = await _context.TblDeliveryusers.FirstOrDefaultAsync(u => u.Id == userId);
+        var deliveryuser = await _context.TblDeliveryusers
+            .FirstOrDefaultAsync(u => u.Id == userId && u.IsDeleted == false);
+
         if (deliveryuser == null)
             return NotFound(new { message = "User not found." });
 
@@ -484,17 +592,34 @@ public class AuthController : ControllerBase
             phone = deliveryuser.Phone,
             email = deliveryuser.Email,
             type = deliveryuser.UserType,
-            adddress = deliveryuser.Address
+            address = deliveryuser.Address, // Fixed typo: was "adddress"
+            city = deliveryuser.City,
+            state = deliveryuser.State,
+            fatherName = deliveryuser.FatherName,
+            dateOfBirth = deliveryuser.Dob?.ToString("yyyy-MM-dd"),
+            whatsappNumber = deliveryuser.WhatsappNo,
+            secondaryMobile = deliveryuser.AlterMobile,
+            bloodGroup = deliveryuser.BloodGroup,
+            language = deliveryuser.LanguageKnown,
+            refferalCode = deliveryuser.Refid,
 
+            // Registration status fields
+            currentStep = deliveryuser.CurrentStep,
+            personalInfoComplete = deliveryuser.PersonalInfoComplete,
+            documentsUploaded = deliveryuser.DocumentsUploaded,
+            profileComplete = deliveryuser.ProfileComplete,
+            registrationStatus = deliveryuser.RegistrationStatus
         });
     }
 
-    // Update Delivery User
+    // Update Delivery User - Enhanced to handle personal info fields
     [HttpPut("delivery-user/update/{userId}")]
     [AllowAnonymous]
-    public async Task<IActionResult> UpdateDeliveryUser(long userId, [FromBody] UpdateDeliveryUserRequest request)
+    public async Task<IActionResult> UpdateDeliveryUser(long userId, [FromBody] DeliveryUserRegisterRequest request)
     {
-        var deliveryuser = await _context.TblDeliveryusers.FirstOrDefaultAsync(u => u.Id == userId);
+        var deliveryuser = await _context.TblDeliveryusers
+            .FirstOrDefaultAsync(u => u.Id == userId && u.IsDeleted == false);
+
         if (deliveryuser == null)
             return NotFound(new { message = "User not found." });
 
@@ -508,8 +633,61 @@ public class AuthController : ControllerBase
         if (!string.IsNullOrWhiteSpace(request.Address))
             deliveryuser.Address = request.Address;
 
+        if (!string.IsNullOrWhiteSpace(request.City))
+            deliveryuser.City = request.City;
+
+        if (!string.IsNullOrWhiteSpace(request.AccountHolderName))
+            deliveryuser.AccountHolderName = request.AccountHolderName;
+
+        if (!string.IsNullOrWhiteSpace(request.BranchName))
+            deliveryuser.BranchName = request.BranchName;
+
+        if (!string.IsNullOrWhiteSpace(request.AccountNo))
+            deliveryuser.AccountNo = request.AccountNo;
+
+        if (!string.IsNullOrWhiteSpace(request.Ifsccode))
+            deliveryuser.Ifsccode = request.Ifsccode;
+
+        if (!string.IsNullOrWhiteSpace(request.AccountType))
+            deliveryuser.AccountType = request.AccountType;
+
+        if (!string.IsNullOrWhiteSpace(request.UpiId))
+            deliveryuser.UpiId = request.UpiId;
+
+        if (!string.IsNullOrWhiteSpace(request.State))
+            deliveryuser.State = request.State;
+
         if (!string.IsNullOrWhiteSpace(request.VendorName))
             deliveryuser.VendorName = request.VendorName;
+
+        // Update personal information fields
+        if (!string.IsNullOrWhiteSpace(request.FatherName))
+            deliveryuser.FatherName = request.FatherName;
+
+        if (!string.IsNullOrWhiteSpace(request.WhatsappNumber))
+            deliveryuser.WhatsappNo = request.WhatsappNumber;
+
+        if (!string.IsNullOrWhiteSpace(request.SecondaryMobile))
+            deliveryuser.AlterMobile = request.SecondaryMobile;
+
+        if (!string.IsNullOrWhiteSpace(request.BloodGroup))
+            deliveryuser.BloodGroup = request.BloodGroup;
+
+        if (!string.IsNullOrWhiteSpace(request.Language))
+            deliveryuser.LanguageKnown = request.Language;
+
+        if (!string.IsNullOrWhiteSpace(request.DateOfBirth) && DateTime.TryParse(request.DateOfBirth, out var dob))
+            deliveryuser.Dob = dob;
+        if (!string.IsNullOrWhiteSpace(request.BankName))
+            deliveryuser.BankName = request.BankName;
+
+        if (!string.IsNullOrWhiteSpace(request.AccountNo))
+            deliveryuser.AccountNo = request.AccountNo;
+
+        if (!string.IsNullOrWhiteSpace(request.Ifsccode))
+            deliveryuser.Ifsccode = request.Ifsccode;
+
+        deliveryuser.ModifiedDate = DateTime.UtcNow;
 
         try
         {
@@ -524,109 +702,27 @@ public class AuthController : ControllerBase
                     phone = deliveryuser.Phone,
                     email = deliveryuser.Email,
                     type = "deliveryuser",
-                    address = deliveryuser.Address
+                    address = deliveryuser.Address,
+                    city = deliveryuser.City,
+                    state = deliveryuser.State,
+                    fatherName = deliveryuser.FatherName,
+                    dateOfBirth = deliveryuser.Dob?.ToString("yyyy-MM-dd"),
+                    whatsappNumber = deliveryuser.WhatsappNo,
+                    secondaryMobile = deliveryuser.AlterMobile,
+                    bloodGroup = deliveryuser.BloodGroup,
+                    language = deliveryuser.LanguageKnown,
+                    currentStep = deliveryuser.CurrentStep,
+                    personalInfoComplete = deliveryuser.PersonalInfoComplete,
+                    documentsUploaded = deliveryuser.DocumentsUploaded,
+                    profileComplete = deliveryuser.ProfileComplete,
+                    registrationStatus = deliveryuser.RegistrationStatus
                 },
                 message = "User information updated successfully."
             });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to update user information." });
-        }
-    }
-
-    // Upload Document for Delivery User
-    [HttpPost("delivery-user/upload-document")]
-    [AllowAnonymous]
-    public async Task<IActionResult> UploadDeliveryUserDocument([FromForm] UploadDocumentRequest request)
-    {
-        try
-        {
-            var deliveryUser = await _context.TblDeliveryusers
-                .FirstOrDefaultAsync(u => u.Id == request.UserId);
-
-            if (deliveryUser == null)
-                return NotFound(new { message = "Delivery user not found." });
-
-            // Handle file upload (save to server/cloud)
-            string? filePath = null;
-            if (request.File != null)
-            {
-                // Save file logic here - adjust path as needed
-                var uploadsFolder = Path.Combine("uploads", "delivery-users", request.UserId.ToString());
-                Directory.CreateDirectory(uploadsFolder);
-
-                var fileName = $"{request.DocumentType}_{DateTime.UtcNow:yyyyMMddHHmmss}_{request.File.FileName}";
-                filePath = Path.Combine(uploadsFolder, fileName);
-
-                using var stream = new FileStream(filePath, FileMode.Create);
-                await request.File.CopyToAsync(stream);
-            }
-
-            // Update delivery user based on document type
-            switch (request.DocumentType.ToLower())
-            {
-                case "profile":
-                case "image":
-                    deliveryUser.Image = filePath;
-                    break;
-                case "idproof":
-                case "aadhar":
-                    deliveryUser.Idproof = filePath;
-                    deliveryUser.AadharCardNo = request.DocumentNumber;
-                    break;
-                case "license":
-                case "businesslicense":
-                    deliveryUser.BusinessLicense = filePath;
-                    break;
-                case "pan":
-                    deliveryUser.Pan = request.DocumentNumber;
-                    break;
-                case "gst":
-                    deliveryUser.Gst = request.DocumentNumber;
-                    break;
-            }
-
-            // Check if all required documents are uploaded
-            bool allDocsUploaded = !string.IsNullOrEmpty(deliveryUser.Idproof) &&
-                                  !string.IsNullOrEmpty(deliveryUser.BusinessLicense);
-
-            if (allDocsUploaded)
-            {
-                deliveryUser.DocumentsUploaded = true;
-                deliveryUser.CurrentStep = 4; // Move to final step
-                deliveryUser.ProfileComplete = true;
-            }
-
-            deliveryUser.ModifiedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "Document uploaded successfully.",
-                filePath = filePath,
-                user = new
-                {
-                    id = deliveryUser.Id,
-                    name = deliveryUser.ContactPerson,
-                    phone = deliveryUser.Phone,
-                    email = deliveryUser.Email,
-                    currentStep = deliveryUser.CurrentStep,
-                    personalInfoComplete = deliveryUser.PersonalInfoComplete,
-                    documentsUploaded = deliveryUser.DocumentsUploaded,
-                    profileComplete = deliveryUser.ProfileComplete,
-                    registrationStatus = deliveryUser.RegistrationStatus,
-                    image = deliveryUser.Image
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new
-            {
-                message = "Document upload failed.",
-                error = ex.Message
-            });
+            return StatusCode(500, new { message = "Failed to update user information.", error = ex.Message });
         }
     }
 
@@ -649,6 +745,9 @@ public class AuthController : ControllerBase
             isRejected = deliveryUser.RegistrationStatus == "REJECTED",
             rejectRemark = deliveryUser.RejectRemark,
             currentStep = deliveryUser.CurrentStep,
+            vehicledetail = deliveryUser.Vehicledetail,
+            bankcomplete = deliveryUser.Bankdetail,
+            emergencycomplete = deliveryUser.Emergencydetail,
             personalInfoComplete = deliveryUser.PersonalInfoComplete,
             documentsUploaded = deliveryUser.DocumentsUploaded,
             profileComplete = deliveryUser.ProfileComplete
@@ -659,13 +758,6 @@ public class AuthController : ControllerBase
 
 }
 
-public class UploadDocumentRequest
-{
-    public long UserId { get; set; }
-    public string DocumentType { get; set; } = string.Empty; // "idproof", "license", "image", etc.
-    public string? DocumentNumber { get; set; } // For PAN, Aadhar, etc.
-    public IFormFile? File { get; set; }
-}
 public class DeliveryUserRegisterRequest
 {
     public string? Name { get; set; }
@@ -676,10 +768,20 @@ public class DeliveryUserRegisterRequest
     public string? City { get; set; }
     public string? State { get; set; }
     public string? PostalCode { get; set; }
+    public String? DateOfBirth { get; set; }
     public string? CompanyName { get; set; }
+    public string? FatherName { get; set; }
+    public string? WhatsappNumber { get; set; }
+    public string? Language { get; set; }
+    public string? BloodGroup { get; set; }
+    public string? SecondaryMobile { get; set; }
     public int? BusinessCategory { get; set; }
     public string? BusinessLocation { get; set; }
+    public string? AccountHolderName { get; set; }
     public string? BankName { get; set; }
+    public string? UpiId { get; set; }
+    public string? AccountType { get; set; }
+    public string? BranchName { get; set; }
     public string? AccountNo { get; set; }
     public string? Ifsccode { get; set; }
     public long? Refid { get; set; }
@@ -702,6 +804,9 @@ public class UpdateUserRequest
     public string? Email { get; set; }
     public string? Address { get; set; }
     public string? VendorName { get; set; }
+    public IFormFile? Image { get; set; }
+    public string? Gender { get; set; }
+    public bool UseGenderAvatar { get; set; } = false;
 }
 
 public class SendOtpRequest

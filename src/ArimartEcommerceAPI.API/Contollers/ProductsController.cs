@@ -58,27 +58,27 @@ namespace ArimartEcommerceAPI.Controllers
 
         // GET: api/products/{id}/image-url
         [AllowAnonymous]
-        [HttpGet("{id}/image-url")]
-        public async Task<ActionResult<string>> GetProductImageUrl(int id)
+        [HttpGet("{id}/image-urls")]
+        public async Task<ActionResult<IEnumerable<string>>> GetProductImageUrls(int id)
         {
-            var product = await _context.VwProducts
-                .Where(p => p.Id == id && p.IsDeleted == false)
-                .Select(p => p.Image)
-                .FirstOrDefaultAsync();
+            var productImages = await _context.ProductsImgs
+                .Where(p => p.PId == id)
+                .Select(p => p.IName)
+                .ToListAsync();
 
-            if (product == null)
+            if (productImages == null || !productImages.Any())
             {
                 return NotFound();
             }
 
-            if (string.IsNullOrEmpty(product))
-            {
-                return Ok(null);
-            }
+            var imageUrls = productImages
+                .Where(img => !string.IsNullOrEmpty(img))
+                .Select(img => $"{Request.Scheme}://{Request.Host}/Uploads/{img}")
+                .ToList();
 
-            var imageUrl = $"{Request.Scheme}://{Request.Host}/Uploads/{product}";
-            return Ok(imageUrl);
+            return Ok(imageUrls);
         }
+
 
         // GET: api/products/{id}
         [AllowAnonymous]

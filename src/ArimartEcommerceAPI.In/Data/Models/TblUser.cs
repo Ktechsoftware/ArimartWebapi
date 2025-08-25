@@ -28,10 +28,11 @@ public partial class TblUser
     public DateTime AddedDate { get; set; }
 
     public bool IsDeleted { get; set; }
+    public bool? UseDefaultAvatar { get; set; }
 
     public DateTime? ModifiedDate { get; set; }
 
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 
     public string? UserType { get; set; }
 

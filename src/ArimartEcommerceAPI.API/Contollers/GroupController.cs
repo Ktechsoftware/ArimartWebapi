@@ -1,5 +1,6 @@
 ﻿using ArimartEcommerceAPI.Infrastructure.Data;
 using ArimartEcommerceAPI.Infrastructure.Data.Models;
+using ArimartEcommerceAPI.Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,12 @@ namespace ArimartEcommerceAPI.Controllers
     public class GroupController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IFcmPushService _fcmPushService;
 
-        public GroupController(ApplicationDbContext context)
+        public GroupController(ApplicationDbContext context, IFcmPushService fcmPushService)
         {
             _context = context;
+            _fcmPushService = fcmPushService;
         }
 
         // ✅ GET: All Active Group Deals (For Listing)
@@ -189,11 +192,79 @@ namespace ArimartEcommerceAPI.Controllers
             }
         }
 
+        private async Task CheckAndCompleteGroup(long groupId)
+        {
+            var group = await _context.VwGroups.FirstOrDefaultAsync(g => g.Gid == groupId);
+            if (group == null) return;
+
+            int required = int.TryParse(group.Gqty, out var qty) ? qty : 0;
+            int joined = await _context.TblGroupjoins.CountAsync(j => j.Groupid == groupId && !j.IsDeleted);
+
+            if (joined >= required)
+            {
+                // Activate all pending orders for this group
+                var pendingOrders = await _context.TblOrdernows
+                    .Where(o => o.Groupid == groupId && o.DassignidTime == null && !o.IsDeleted)
+                    .ToListAsync();
+
+                foreach (var order in pendingOrders)
+                {
+                    order.DassignidTime = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Notify all group members
+                var memberIds = await _context.TblGroupjoins
+                    .Where(j => j.Groupid == groupId && !j.IsDeleted)
+                    .Select(j => j.Userid)
+                    .ToListAsync();
+
+                foreach (var memberId in memberIds)
+                {
+                    await SendGroupCompletedNotification(memberId, groupId);
+                }
+            }
+        }
+        private async Task CleanupExpiredGroupItems()
+        {
+            var expiredCartItems = await _context.TblAddcarts
+                .Where(c => c.Groupid != null && !c.IsDeleted)
+                .Join(_context.VwGroups,
+                    c => c.Groupid,
+                    g => g.Gid,
+                    (c, g) => new { cart = c, group = g })
+                .Where(x => x.group.EventSend1 <= DateTime.UtcNow)
+                .Select(x => x.cart)
+                .ToListAsync();
+
+            foreach (var item in expiredCartItems)
+            {
+                item.IsDeleted = true;
+                item.ModifiedDate = DateTime.UtcNow;
+            }
+
+            if (expiredCartItems.Any())
+            {
+                await _context.SaveChangesAsync();
+
+                var userIds = expiredCartItems.Select(i => i.Userid).Distinct();
+                foreach (var userId in userIds)
+                {
+                    if (userId.HasValue) // Check if not null
+                    {
+                        await SendExpiredGroupNotification(userId.Value);
+                    }
+                }
+            }
+        }
+
         // ✅ POST: Join existing group (Based on tbl_Groupjoin table)
         [AllowAnonymous]
         [HttpPost("join")]
         public async Task<IActionResult> JoinGroup([FromBody] JoinGroupRequest request)
         {
+            await CleanupExpiredGroupItems();
             try
             {
                 // Check if the user has already joined this group
@@ -223,6 +294,7 @@ namespace ArimartEcommerceAPI.Controllers
 
                 _context.TblGroupjoins.Add(newJoin);
                 await _context.SaveChangesAsync();
+                await CheckAndCompleteGroup(request.Groupid);
 
                 return Ok(new
                 {
@@ -240,6 +312,7 @@ namespace ArimartEcommerceAPI.Controllers
                     Message = ex.Message
                 });
             }
+
         }
 
         // ✅ DELETE: Leave group
@@ -491,7 +564,139 @@ namespace ArimartEcommerceAPI.Controllers
             });
         }
 
-       
+        // ===================== Send notification =========================
+        // Group Expired Notification
+        private async Task<string> SendExpiredGroupNotification(int userId)
+        {
+            return await SendNotificationAsync(
+                userId,
+                "⏰ Group Deal Expired",
+                "Some items were removed from your cart. You can reorder them individually!"
+            );
+        }
+
+        // Group Completed Notification
+        // Change your notification method signature to accept long
+        private async Task<string> SendGroupCompletedNotification(long? userId, long groupId)
+        {
+            return await SendNotificationAsync(
+                (int)userId.Value, // Convert here if your FCM method needs int
+                "🎉 Group Deal Complete!",
+                "Congratulations! Your group order is now being processed."
+            );
+        }
+
+        // New Member Joined Notification
+        private async Task<string> SendNewMemberJoinedNotification(int userId, string memberName)
+        {
+            return await SendNotificationAsync(
+                userId,
+                "👥 New Member Joined!",
+                $"{memberName} joined your group deal. Share with more friends to complete faster!"
+            );
+        }
+
+        // Group Almost Complete Notification
+        private async Task<string> SendGroupAlmostCompleteNotification(int userId, int remainingMembers)
+        {
+            return await SendNotificationAsync(
+                userId,
+                "🔥 Group Almost Complete!",
+                $"Only {remainingMembers} more member(s) needed! Share to unlock the deal."
+            );
+        }
+
+        // Cart Item Removed Notification
+        private async Task<string> SendCartItemRemovedNotification(int userId, string productName)
+        {
+            return await SendNotificationAsync(
+                userId,
+                "🛒 Cart Updated",
+                $"{productName} was removed from your cart due to group expiry. You can add it again!"
+            );
+        }
+
+        // Group Order Processing Notification
+        private async Task<string> SendGroupOrderProcessingNotification(int userId, string trackId)
+        {
+            return await SendNotificationAsync(
+                userId,
+                "📦 Group Order Processing",
+                $"Your group order {trackId} is now being processed. Group deal completed successfully!"
+            );
+        }
+
+        // Reorder Available Notification
+        private async Task<string> SendReorderAvailableNotification(int userId, string productName)
+        {
+            return await SendNotificationAsync(
+                userId,
+                "🔄 Reorder Available",
+                $"{productName} is now available for individual purchase. Order now!"
+            );
+        }
+
+        // Group Failed Notification
+        private async Task<string> SendGroupFailedNotification(int userId, string productName)
+        {
+            return await SendNotificationAsync(
+                userId,
+                "❌ Group Deal Failed",
+                $"Group deal for {productName} didn't complete in time. You can still order individually!"
+            );
+        }
+
+        // Group Member Limit Reached
+        private async Task<string> SendGroupLimitReachedNotification(int userId)
+        {
+            return await SendNotificationAsync(
+                userId,
+                "✅ Group Limit Reached!",
+                "Amazing! Your group deal reached maximum members. Orders are being processed now."
+            );
+        }
+
+        // Time Running Out Notification
+        private async Task<string> SendTimeRunningOutNotification(int userId, int hoursLeft)
+        {
+            return await SendNotificationAsync(
+                userId,
+                "⏳ Time Running Out!",
+                $"Only {hoursLeft} hours left for your group deal. Invite friends now!"
+            );
+        }
+        private async Task<string> SendNotificationAsync(int userId, string title, string message)
+        {
+            var fcmToken = await _context.FcmDeviceTokens
+                .Where(t => t.UserId == userId)
+                .Select(t => t.Token)
+                .FirstOrDefaultAsync();
+
+            string fcmStatus = "FCM not sent";
+
+            try
+            {
+                if (!string.IsNullOrEmpty(fcmToken))
+                {
+                    var (success, error) = await _fcmPushService.SendNotificationAsync(
+                        fcmToken,
+                        title,
+                        message
+                    );
+                    fcmStatus = success ? "✅ FCM sent successfully." : $"❌ FCM failed: {error}";
+                }
+                else
+                {
+                    fcmStatus = "❌ FCM token not found for user.";
+                }
+            }
+            catch (Exception ex)
+            {
+                fcmStatus = $"❌ FCM exception: {ex.Message}";
+            }
+
+            return fcmStatus;
+        }
 
     }
 

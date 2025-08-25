@@ -18,6 +18,61 @@ namespace ArimartEcommerceAPI.Controllers
             _context = context;
         }
 
+        // Add this method to your existing RatingController class
+        [AllowAnonymous]
+        [HttpGet("eligibility/{pdid}")]
+        public async Task<IActionResult> CheckRatingEligibility(long pdid, [FromQuery] int userId)
+        {
+            try
+            {
+                // ✅ Find latest delivered order for product & user
+                var order = await _context.TblOrdernows
+                    .Where(o => o.Userid == userId && o.Pdid == pdid && o.DdeliverredidTime != null)
+                    .OrderByDescending(o => o.DdeliverredidTime)
+                    .FirstOrDefaultAsync();
+
+                if (order == null)
+                {
+                    return Ok(new
+                    {
+                        eligible = false,
+                        message = "You can only rate products you have received (delivered)."
+                    });
+                }
+
+                // ✅ Check if already rated for this specific order
+                var existingRating = await _context.TblRatings
+                    .FirstOrDefaultAsync(r => r.Userid == userId && r.Pdid == pdid && r.Orderid == order.Id);
+
+                if (existingRating != null)
+                {
+                    return Ok(new
+                    {
+                        eligible = false,
+                        message = "You have already rated this product from this order.",
+                        existingRating = new
+                        {
+                            rating = existingRating.Ratingid,
+                            comment = existingRating.Descr,
+                            ratedOn = existingRating.AddedDate
+                        }
+                    });
+                }
+
+                // ✅ User is eligible to rate
+                return Ok(new
+                {
+                    eligible = true,
+                    message = "You can rate this product.",
+                    orderId = order.Id,
+                    deliveredOn = order.DdeliverredidTime
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while checking eligibility." });
+            }
+        }
         // POST: api/rating
         [HttpPost("rate")]
         public async Task<IActionResult> SubmitRating([FromBody] ProductRatingRequest request)
@@ -52,8 +107,6 @@ namespace ArimartEcommerceAPI.Controllers
 
             return Ok(new { message = "Rating submitted successfully." });
         }
-
-
 
         // GET: api/rating/analytics/{pdid}
         [AllowAnonymous]

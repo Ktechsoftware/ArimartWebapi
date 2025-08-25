@@ -10,6 +10,7 @@ public partial class TblCategory
     public string CategoryName { get; set; } = null!;
 
     public string? Image { get; set; }
+    public string? IconLabel { get; set; }
 
     public DateTime AddedDate { get; set; }
 

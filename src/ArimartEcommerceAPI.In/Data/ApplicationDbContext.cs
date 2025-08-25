@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using ArimartEcommerceAPI.Infrastructure.Data.Models;
+using Hangfire.Server;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArimartEcommerceAPI.Infrastructure.Data;
@@ -37,6 +38,11 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<TblCategory> TblCategories { get; set; }
 
     public virtual DbSet<TblDeliveryuser> TblDeliveryusers { get; set; }
+    public virtual DbSet<TblDeliveryWallet> TblDeliveryWallets { get; set; }
+    public virtual DbSet<TblDeliveryTransaction> TblDeliveryTransactions { get; set; }
+    public virtual DbSet<TblDeliveryWithdrawal> TblDeliveryWithdrawals { get; set; }
+    public virtual DbSet<DeliveryReferral> DeliveryReferrals { get; set; }
+    public virtual DbSet<DeliveryRating> DeliveryRatings { get; set; }
 
     public virtual DbSet<TblEmployee> TblEmployees { get; set; }
 
@@ -105,6 +111,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<VwTopProducts> VwTopProducts { get; set; }
 
     public virtual DbSet<VwUserrefercode> VwUserrefercodes { get; set; }
+    public virtual DbSet<VwDeliverrefercode> VwDeliverrefercodes { get; set; }
 
     public virtual DbSet<VwWhishlist> VwWhishlists { get; set; }
     public virtual DbSet<TblUserReferral> TblUserReferrals { get; set; }
@@ -112,12 +119,17 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<TblPromocodeUsage> TblPromocodeUsages { get; set; }
     public virtual DbSet<TblPromoProduct> TblPromoProducts { get; set; }
     public virtual DbSet<FcmDeviceToken> FcmDeviceTokens { get; set; }
-
+    public virtual DbSet<Affiliate> Affiliates { get; set; }
+    public virtual DbSet<AffiliateReferral> AffiliateReferrals { get; set; }
+    public virtual DbSet<DeliveryPartnerLocation> DeliveryPartnerLocations { get; set; }
+    public virtual DbSet<DeliveryHistory> DeliveryHistories { get; set; }
+    public virtual DbSet<UploadDocument> UploadDocuments { get; set; }
+    public virtual DbSet<OrderEarning> OrderEarnings { get; set; }
+    public virtual DbSet<IncentiveRule> IncentiveRules { get; set; }
+    public virtual DbSet<DeliveryShift> DeliveryShifts { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Data Source=103.120.176.21;Integrated Security=False; DATABASE=tridente_ecomme1;  Password=ecomme1@#$; User ID=tridente_ecomme1; Connect Timeout=15;Encrypt=False;Packet Size=4096");
-
+        => optionsBuilder.UseSqlServer("Data Source=190.92.174.111;Integrated Security=False;Database=tridente_ecomme1;Password=vD60^0nc8;User ID=tridente_ecomme1;Connect Timeout=15;Encrypt=False;Packet Size=4096");
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("tridente_ecomme1");
@@ -173,7 +185,7 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<FcmDeviceToken>(entity =>
         {
-            entity.ToTable("FcmDeviceToken"); // Use your schema and table name
+            entity.ToTable("FcmDeviceToken","dbo");
 
             entity.HasKey(e => e.Id); // Primary key
 
@@ -336,7 +348,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity
                 .HasNoKey()
-                .ToTable("products_imgs");
+                .ToTable("products_imgs", "dbo");
 
             entity.Property(e => e.IName)
                 .HasMaxLength(50)
@@ -375,6 +387,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(200)
                 .HasColumnName("categoryName");
             entity.Property(e => e.Image).HasMaxLength(50);
+            entity.Property(e => e.IconLabel).HasMaxLength(50).HasColumnName("Icon_label");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.ModifiedDate).HasColumnType("datetime");
         });
@@ -386,61 +399,74 @@ public partial class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Email, "UQ__tbl_Deli__A9D1053440214C57").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("ID");
+
             entity.Property(e => e.AadharCardNo).HasMaxLength(20);
             entity.Property(e => e.AccountNo).HasMaxLength(50);
+
+            entity.Property(e => e.Dob).HasColumnType("date");
+
+            entity.Property(e => e.WhatsappNo).HasMaxLength(15);
+            entity.Property(e => e.AlterMobile).HasMaxLength(15);
+            entity.Property(e => e.BloodGroup).HasMaxLength(10);
+            entity.Property(e => e.LanguageKnown).HasMaxLength(50);
+
             entity.Property(e => e.AddedDate)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.Address)
-                .HasMaxLength(255)
-                .IsUnicode(false);
+
+            entity.Property(e => e.Address).HasMaxLength(255).IsUnicode(false);
             entity.Property(e => e.BankName).HasMaxLength(100);
+            entity.Property(e => e.FatherName).HasMaxLength(250);
             entity.Property(e => e.BusinessLocation).HasMaxLength(255);
-            entity.Property(e => e.City)
-                .HasMaxLength(100)
-                .IsUnicode(false);
+            entity.Property(e => e.City).HasMaxLength(100).IsUnicode(false);
             entity.Property(e => e.CompanyName).HasMaxLength(100);
-            entity.Property(e => e.ContactPerson)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.Country)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.Email)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.Gst)
-                .HasMaxLength(20)
-                .HasColumnName("GST");
+            entity.Property(e => e.ContactPerson).HasMaxLength(100).IsUnicode(false);
+            entity.Property(e => e.Country).HasMaxLength(100).IsUnicode(false);
+            entity.Property(e => e.Email).HasMaxLength(100).IsUnicode(false);
+            entity.Property(e => e.Gst).HasMaxLength(20).HasColumnName("GST");
             entity.Property(e => e.Idproof).HasColumnName("IDProof");
-            entity.Property(e => e.Ifsccode)
-                .HasMaxLength(20)
-                .HasColumnName("IFSCCode");
+            entity.Property(e => e.AccountHolderName).HasColumnName("accountHolderName");
+            entity.Property(e => e.AccountType).HasColumnName("accountType");
+            entity.Property(e => e.BranchName).HasColumnName("branchName");
+            entity.Property(e => e.UpiId).HasColumnName("upiId");
+            entity.Property(e => e.Ifsccode).HasMaxLength(20).HasColumnName("IFSCCode");
             entity.Property(e => e.Image).HasColumnName("image");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.ModifiedDate).HasColumnType("datetime");
-            entity.Property(e => e.Pan)
-                .HasMaxLength(20)
-                .HasColumnName("PAN");
-            entity.Property(e => e.Phone)
-                .HasMaxLength(20)
-                .IsUnicode(false);
-            entity.Property(e => e.PostalCode)
-                .HasMaxLength(20)
-                .IsUnicode(false);
+            entity.Property(e => e.Pan).HasMaxLength(20).HasColumnName("PAN");
+            entity.Property(e => e.Phone).HasMaxLength(20).IsUnicode(false);
+            entity.Property(e => e.PostalCode).HasMaxLength(20).IsUnicode(false);
             entity.Property(e => e.Refid).HasColumnName("refid");
-            entity.Property(e => e.Reject)
-                .HasDefaultValue(0)
-                .HasColumnName("reject");
+            entity.Property(e => e.Reject).HasDefaultValue(0).HasColumnName("reject");
             entity.Property(e => e.RejectRemark).HasColumnName("rejectRemark");
-            entity.Property(e => e.State)
-                .HasMaxLength(100)
-                .IsUnicode(false);
+            entity.Property(e => e.State).HasMaxLength(100).IsUnicode(false);
             entity.Property(e => e.UserType).HasColumnName("userType");
-            entity.Property(e => e.VendorName)
-                .HasMaxLength(100)
-                .IsUnicode(false);
+            entity.Property(e => e.VendorName).HasMaxLength(100).IsUnicode(false);
+
+            // ✅ Emergency contact fields
+            entity.Property(e => e.PrimaryContactName).HasMaxLength(100);
+            entity.Property(e => e.PrimaryContactPhone).HasMaxLength(15);
+            entity.Property(e => e.PrimaryContactRelation).HasMaxLength(50);
+
+            entity.Property(e => e.SecondaryContactName).HasMaxLength(100);
+            entity.Property(e => e.SecondaryContactPhone).HasMaxLength(15);
+            entity.Property(e => e.SecondaryContactRelation).HasMaxLength(50);
+
+            entity.Property(e => e.MedicalConditions).HasMaxLength(255);
+            entity.Property(e => e.Allergies).HasMaxLength(255);
+            entity.Property(e => e.EmergencyAddress).HasMaxLength(255);
+
+            // ✅ Vehicle details
+            entity.Property(e => e.VehicleBrand).HasMaxLength(100);
+            entity.Property(e => e.VehicleModel).HasMaxLength(100);
+            entity.Property(e => e.VehicleYear).HasMaxLength(10);
+            entity.Property(e => e.VehicleColor).HasMaxLength(50);
+
+            entity.Property(e => e.RegistrationDate).HasColumnType("date");
+            entity.Property(e => e.InsuranceNumber).HasMaxLength(50);
+            entity.Property(e => e.DrivingLicenseNumber).HasMaxLength(50);
         });
+
 
         modelBuilder.Entity<TblEmployee>(entity =>
         {
@@ -975,9 +1001,8 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
+            entity.ToTable("users", "dbo");
             entity.HasKey(e => e.UserId);
-            entity.ToTable("users");
-
             entity.Property(e => e.AtDate)
                 .HasMaxLength(30)
                 .HasColumnName("at_date");
@@ -1781,6 +1806,30 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(100)
                 .IsUnicode(false);
         });
+        
+        modelBuilder.Entity<VwDeliverrefercode>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("vw_DeliverReferCode", "dbo");
+
+            entity.Property(e => e.Email)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("ID");
+            entity.Property(e => e.Phone)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            entity.Property(e => e.DeliverRefercode)
+                .HasMaxLength(9)
+                 .HasColumnName("deliverReferCode")
+                .IsUnicode(false);
+            entity.Property(e => e.ContactPerson)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+        });
 
         modelBuilder.Entity<VwWhishlist>(entity =>
         {
@@ -1837,6 +1886,182 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.VendorName)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<Affiliate>(entity =>
+        {
+            entity.HasKey(e => e.AffiliateID);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.ReferralCode).HasMaxLength(50);
+            entity.Property(e => e.TotalEarnings).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.PendingEarnings).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.UserID);
+            entity.HasIndex(e => e.ReferralCode).IsUnique();
+        });
+
+        // AffiliateReferral configuration
+        modelBuilder.Entity<AffiliateReferral>(entity =>
+        {
+            entity.HasKey(e => e.ReferralID);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.CommissionAmount).HasColumnType("decimal(18,2)");
+            entity.HasOne(d => d.Affiliate)
+                  .WithMany(p => p.AffiliateReferrals)
+                  .HasForeignKey(d => d.AffiliateID);
+        });
+        
+        modelBuilder.Entity<UploadDocument>(entity =>
+        {
+            entity.ToTable("tbl_UploadDocuments", "dbo");
+            entity.HasKey(e => e.DocumentId);
+        });
+
+
+        modelBuilder.Entity<TblDeliveryTransaction>(entity =>
+        {
+            entity.ToTable("tbl_deliveryTransaction", "dbo");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ReferenceNumber);
+            entity.HasIndex(e => new { e.DeliveryPartnerId, e.CreatedAt });
+
+            entity.Property(e => e.Type)
+                .HasConversion<string>();
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>();
+        });
+
+        modelBuilder.Entity<TblDeliveryWithdrawal>(entity =>
+        {
+            entity.ToTable("tbl_deliveryWithdrawal", "dbo");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ReferenceNumber);
+            entity.HasIndex(e => new { e.DeliveryPartnerId, e.Status });
+
+            entity.Property(e => e.Method)
+                .HasConversion<string>();
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>();
+        });
+        
+        modelBuilder.Entity<TblDeliveryWallet>(entity =>
+        {
+            entity.ToTable("tbl_deliveryWallet", "dbo");
+            entity.HasKey(e => e.Id);
+        });
+
+        modelBuilder.Entity<DeliveryReferral>(entity =>
+        {
+            entity.ToTable("tbl_deliveryReferrals", "dbo");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ReferrerId).IsRequired();
+            entity.Property(e => e.RefereeId).IsRequired();
+            entity.Property(e => e.ReferralCode).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Pending");
+            entity.Property(e => e.CompletedDeliveries).HasDefaultValue(0);
+            entity.Property(e => e.RequiredDeliveries).HasDefaultValue(5);
+            entity.Property(e => e.ReferrerReward).HasColumnType("decimal(10,2)").HasDefaultValue(100.00m);
+            entity.Property(e => e.RefereeReward).HasColumnType("decimal(10,2)").HasDefaultValue(50.00m);
+            entity.Property(e => e.IsReferrerPaid).HasDefaultValue(false);
+            entity.Property(e => e.IsRefereePaid).HasDefaultValue(false);
+            entity.Property(e => e.CompletedAt).HasColumnType("datetime2");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2").HasDefaultValueSql("GETUTCDATE()");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2").HasDefaultValueSql("GETUTCDATE()");
+
+            // Configure DeliveryReferral relationships
+            modelBuilder.Entity<DeliveryReferral>()
+                .HasOne(r => r.Referrer)
+                .WithMany()
+                .HasForeignKey(r => r.ReferrerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DeliveryReferral>()
+                .HasOne(r => r.Referee)
+                .WithMany()
+                .HasForeignKey(r => r.RefereeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.ReferrerId, e.RefereeId })
+                  .IsUnique()
+                  .HasDatabaseName("unique_referral");
+        });
+
+        modelBuilder.Entity<DeliveryRating>(entity =>
+        {
+            entity.ToTable("tbl_DeliveryRatings", "dbo");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.DeliveryBoyId)
+                .IsRequired();
+
+            entity.Property(e => e.CustomerId)
+                .IsRequired();
+
+            entity.Property(e => e.OrderId);
+
+            entity.Property(e => e.Rating)
+                .HasColumnType("decimal(3,2)")
+                .IsRequired();
+
+            entity.Property(e => e.Feedback)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("GETDATE()")
+                .IsRequired();
+        });
+
+        // DeliveryShift
+        modelBuilder.Entity<DeliveryShift>(entity =>
+        {
+            entity.ToTable("DeliveryShift", "dbo");
+            entity.HasKey(e => e.ShiftId);
+
+            entity.Property(e => e.StartLat).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.StartLng).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.EndLat).HasColumnType("decimal(9,6)");
+            entity.Property(e => e.EndLng).HasColumnType("decimal(9,6)");
+
+            entity.Property(e => e.CreatedAt).IsRequired();
+
+            entity.HasOne(e => e.DeliveryPartner)
+                  .WithMany(p => p.DeliveryShifts)
+                  .HasForeignKey(e => e.PartnerId);
+        });
+
+        // IncentiveRule
+        modelBuilder.Entity<IncentiveRule>(entity =>
+        {
+            entity.ToTable("IncentiveRule", "dbo");
+            entity.HasKey(e => e.RuleId);
+
+            entity.Property(e => e.City).HasMaxLength(100);
+            entity.Property(e => e.IncentiveAmount).HasColumnType("decimal(12,2)");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+        });
+
+        // OrderEarning
+        modelBuilder.Entity<OrderEarning>(entity =>
+        {
+            entity.ToTable("OrderEarning", "dbo");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.EarnAmount).HasColumnType("decimal(12,2)");
+
+            entity.HasOne(e => e.DeliveryPartner)
+                  .WithMany(p => p.OrderEarnings)
+                  .HasForeignKey(e => e.PartnerId);
+
+            entity.HasOne(e => e.Order)
+                  .WithMany()
+                  .HasForeignKey(e => e.OrderId);
         });
 
         OnModelCreatingPartial(modelBuilder);

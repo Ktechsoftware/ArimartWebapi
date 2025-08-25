@@ -14,6 +14,25 @@ public class CartController : ControllerBase
         _context = context;
     }
 
+    private object GetGroupStatus(long groupId)
+    {
+        var group = _context.VwGroups.FirstOrDefault(g => g.Gid == groupId);
+        if (group == null) return null;
+
+        int required = int.TryParse(group.Gqty, out var qty) ? qty : 0;
+        int joined = _context.TblGroupjoins.Count(j => j.Groupid == groupId && !j.IsDeleted);
+
+        bool isExpired = group.EventSend1 <= DateTime.UtcNow;
+        bool isComplete = joined >= required;
+
+        return new
+        {
+            status = isExpired ? "expired" : (isComplete ? "completed" : "waiting"),
+            requiredMembers = required,
+            joinedMembers = joined,
+            timeRemaining = isExpired ? 0 : (group.EventSend1 - DateTime.UtcNow).Value.TotalHours
+        };
+    }
     // 1. ✅ Add to Cart
     [HttpPost("add/user")]
     public async Task<IActionResult> AddToCart([FromBody] AddToCartRequest request)
@@ -73,12 +92,13 @@ public class CartController : ControllerBase
         if (!items.Any())
             return Ok(new { items = new List<object>(), totalItems = 0, subtotal = 0 });
 
-        // ✅ Filter only items without groupid
-        var regularItems = items
-            .Where(c => c.Groupid == null || c.Groupid == 0) // null or 0 treated as no group
-            .ToList();
+        // Filter only valid items (including group validation)
+        var validItems = items.Where(c =>
+            c.Groupid == null || c.Groupid == 0 || // Regular items
+            IsGroupStillActive(c.Groupid.Value) // Valid group items
+        ).ToList();
 
-        var result = regularItems.Select(c => new
+        var result = validItems.Select(c => new
         {
             id = c.Aid,
             pid = c.Pid,
@@ -102,7 +122,9 @@ public class CartController : ControllerBase
             vendorName = c.VendorName,
             userPhone = c.Phone,
             qtyprice = c.Qtyprice,
-            groupcode = c.GroupCode
+            groupcode = c.GroupCode,
+            // 👈 ADD THIS LINE HERE
+            groupStatus = c.Groupid != null ? GetGroupStatus(c.Groupid.Value) : null
         }).ToList();
 
         var totalItems = result.Sum(i => i.quantity);
@@ -116,6 +138,13 @@ public class CartController : ControllerBase
         });
     }
 
+    private bool IsGroupStillActive(long groupId)
+    {
+        var group = _context.VwGroups
+            .FirstOrDefault(g => g.Gid == groupId && g.IsDeleted == false);
+
+        return group != null && group.EventSend1 > DateTime.UtcNow;
+    }
 
 
     // 3. ✅ Update Quantity
@@ -286,7 +315,9 @@ public class CartController : ControllerBase
             vendorName = c.VendorName,
             userPhone = c.Phone,
             qtyprice = c.Qtyprice,
-            groupcode = c.GroupCode // Include group code if available
+            groupcode = c.GroupCode,
+            // 👈 ADD THIS LINE HERE  
+            groupStatus = GetGroupStatus(groupId) // Use the parameter groupId
         }).ToList();
 
         var totalItems = result.Sum(i => i.quantity);
@@ -336,7 +367,9 @@ public class CartController : ControllerBase
                 vendorName = c.VendorName,
                 userPhone = c.Phone,
                 qtyprice = c.Qtyprice,
-                groupcode = c.GroupCode // Include group code if available
+                groupcode = c.GroupCode,
+                // 👈 ADD THIS LINE HERE
+                groupStatus = GetGroupStatus(c.Groupid.Value) // Always has groupid here
             };
         }).ToList();
 
@@ -350,8 +383,6 @@ public class CartController : ControllerBase
             subtotal
         });
     }
-
-
 
 
 

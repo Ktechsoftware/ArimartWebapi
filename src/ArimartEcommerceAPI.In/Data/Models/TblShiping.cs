@@ -34,4 +34,7 @@ public partial class TblShiping
     public bool? IsActive { get; set; }
 
     public int? Userid { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? Instructions { get; set; }
 }

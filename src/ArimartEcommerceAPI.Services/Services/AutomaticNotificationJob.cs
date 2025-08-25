@@ -135,78 +135,83 @@ namespace ArimartEcommerceAPI.Services.Services
 
         // 👥 Group Buy Notifications
         [AutomaticRetry(Attempts = 3)]
-        public async Task ProcessGroupBuyNotifications()
+public async Task ProcessGroupBuyNotifications()
+{
+    try
+    {
+        _logger.LogInformation("Starting group buy notification processing");
+
+        // Process new group joins
+        var recentJoins = await _context.TblGroupjoins
+            .Where(j => !j.IsDeleted &&
+                       j.AddedDate >= DateTime.UtcNow.AddHours(-1))
+            .Join(_context.TblUsers,
+                  join => join.Userid,
+                  user => user.Id,
+                  (join, user) => new { Join = join, User = user })
+            .ToListAsync();
+
+        foreach (var joinData in recentJoins)
         {
-            try
+            if (joinData.Join.Groupid != null && joinData.Join.Userid != null)
             {
-                _logger.LogInformation("Starting group buy notification processing");
+                var alreadySent = await _context.TblNotifications
+                    .AnyAsync(n => n.UserId == joinData.Join.Userid &&
+                                  n.Message.Contains($"joined your group") &&
+                                  n.AddedDate >= DateTime.UtcNow.AddMinutes(-30));
 
-                // Process new group joins
-                var recentJoins = await _context.TblGroupjoins
-                    .Where(j => !j.IsDeleted &&
-                               j.AddedDate >= DateTime.UtcNow.AddHours(-1))
-                    .Include(j => j.Userid)
-                    .ToListAsync();
-
-                foreach (var join in recentJoins)
+                if (!alreadySent)
                 {
-                    if (join.Groupid != null)
-                    {
-                        var alreadySent = await _context.TblNotifications
-                            .AnyAsync(n => n.UserId == join.Userid &&
-                                          n.Message.Contains($"joined your group") &&
-                                          n.AddedDate >= DateTime.UtcNow.AddMinutes(-30));
-
-                        if (!alreadySent)
-                        {
-                            await SendGroupJoinNotification((int)join.Groupid, (int)join.Userid, (long)join.Groupid);
-                        }
-                    }
+                    await SendGroupJoinNotification((int)joinData.Join.Groupid, (int)joinData.Join.Userid, (long)joinData.Join.Groupid);
                 }
-
-                // Process groups nearing completion
-                var almostCompleteGroups = await _context.VwGroups
-                    .Where(g => g.IsDeleted1 == false &&
-                               g.EventSend1 > DateTime.UtcNow)
-                    .ToListAsync();
-
-                foreach (var group in almostCompleteGroups)
-                {
-                    int required = int.TryParse(group.Gqty, out var gqtyParsed) ? gqtyParsed : 0;
-                    int joined = await _context.TblGroupjoins
-                        .CountAsync(j => j.Groupid == group.Gid &&
-                                        !j.IsDeleted && j.IsActive == true);
-
-                    if (required - joined <= 2 && required - joined > 0)
-                    {
-                        var groupMembers = await _context.TblGroupjoins
-                            .Where(j => j.Groupid == group.Gid && !j.IsDeleted)
-                            .Select(j => j.Userid)
-                            .ToListAsync();
-
-                        foreach (var memberId in groupMembers)
-                        {
-                            var alreadySent = await _context.TblNotifications
-                                .AnyAsync(n => n.UserId == memberId &&
-                                              n.Message.Contains("almost complete") &&
-                                              n.AddedDate >= DateTime.UtcNow.AddHours(-12));
-
-                            if (!alreadySent)
-                            {
-                                await SendGroupAlmostCompleteNotification((int)memberId, group.Gid, required - joined);
-                            }
-                        }
-                    }
-                }
-
-                _logger.LogInformation("Group buy notifications processed successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing group buy notifications");
-                throw;
             }
         }
+
+        // Process groups nearing completion
+        var almostCompleteGroups = await _context.VwGroups
+            .Where(g => g.IsDeleted1 == false &&
+                       g.EventSend1 > DateTime.UtcNow)
+            .ToListAsync();
+
+        foreach (var group in almostCompleteGroups)
+        {
+            int required = int.TryParse(group.Gqty, out var gqtyParsed) ? gqtyParsed : 0;
+            int joined = await _context.TblGroupjoins
+                .CountAsync(j => j.Groupid == group.Gid &&
+                                !j.IsDeleted && j.IsActive == true);
+
+            if (required - joined <= 2 && required - joined > 0)
+            {
+                var groupMembers = await _context.TblGroupjoins
+                    .Where(j => j.Groupid == group.Gid && !j.IsDeleted)
+                    .Select(j => j.Userid)
+                    .Where(id => id.HasValue)
+                    .Select(id => id.Value)
+                    .ToListAsync();
+
+                foreach (var memberId in groupMembers)
+                {
+                    var alreadySent = await _context.TblNotifications
+                        .AnyAsync(n => n.UserId == memberId &&
+                                      n.Message.Contains("almost complete") &&
+                                      n.AddedDate >= DateTime.UtcNow.AddHours(-12));
+
+                    if (!alreadySent)
+                    {
+                        await SendGroupAlmostCompleteNotification((int)memberId, group.Gid, required - joined);
+                    }
+                        }
+            }
+        }
+
+        _logger.LogInformation("Group buy notifications processed successfully");
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error processing group buy notifications");
+        throw;
+    }
+}
 
         // 🎯 Product Recommendation Notifications
         [AutomaticRetry(Attempts = 3)]
@@ -581,6 +586,345 @@ namespace ArimartEcommerceAPI.Services.Services
             }
         }
 
+        // 🎯 Group Deal Status Notifications
+        [AutomaticRetry(Attempts = 3)]
+        public async Task ProcessGroupStatusNotifications()
+        {
+            try
+            {
+                _logger.LogInformation("Starting group status notification processing");
+
+                var now = DateTime.UtcNow;
+
+                // 🔥 Groups almost complete (need 1-2 more members)
+                var almostCompleteGroups = await _context.VwGroups
+                    .Where(g => g.IsDeleted1 == false && g.EventSend1 > now)
+                    .ToListAsync();
+
+                foreach (var group in almostCompleteGroups)
+                {
+                    int required = int.TryParse(group.Gqty, out var gqtyParsed) ? gqtyParsed : 0;
+                    int joined = await _context.TblGroupjoins
+                        .CountAsync(j => j.Groupid == group.Gid && !j.IsDeleted && j.IsActive == true);
+
+                    int remaining = required - joined;
+
+                    if (remaining > 0 && remaining <= 2) // Almost complete
+                    {
+                        var groupMembers = await _context.TblGroupjoins
+                            .Where(j => j.Groupid == group.Gid && !j.IsDeleted && j.IsActive == true)
+                            .Select(j => j.Userid)
+                            .Where(id => id.HasValue)
+                            .Select(id => (int)id.Value)
+                            .ToListAsync();
+
+                        foreach (var memberId in groupMembers)
+                        {
+                            var alreadySent = await _context.TblNotifications
+                                .AnyAsync(n => n.UserId == memberId &&
+                                              n.Message.Contains("almost complete") &&
+                                              n.AddedDate >= DateTime.UtcNow.AddHours(-6));
+
+                            if (!alreadySent)
+                            {
+                                await SendGroupAlmostCompleteNotification(memberId, group.Gid, remaining);
+                            }
+                        }
+                    }
+                }
+
+                // ⏰ Groups about to expire (last 2 hours)
+                var expiringGroups = await _context.VwGroups
+                    .Where(g => g.IsDeleted1 == false &&
+                               g.EventSend1 > now &&
+                               g.EventSend1 <= now.AddHours(2))
+                    .ToListAsync();
+
+                foreach (var group in expiringGroups)
+                {
+                    var groupMembers = await _context.TblGroupjoins
+                        .Where(j => j.Groupid == group.Gid && !j.IsDeleted && j.IsActive == true)
+                        .Select(j => j.Userid)
+                        .Where(id => id.HasValue)
+                        .Select(id => (int)id.Value)
+                        .ToListAsync();
+
+                    foreach (var memberId in groupMembers)
+                    {
+                        var alreadySent = await _context.TblNotifications
+                            .AnyAsync(n => n.UserId == memberId &&
+                                          n.Message.Contains("about to expire") &&
+                                          n.AddedDate >= DateTime.UtcNow.AddHours(-3));
+
+                        if (!alreadySent)
+                        {
+                            var hoursLeft = (int)Math.Ceiling((group.EventSend1 - now).Value.TotalHours);
+                            await SendGroupExpiringNotification(memberId, group.Gid, hoursLeft);
+                        }
+                    }
+                }
+
+                // 🎉 Groups completed
+                var recentlyCompletedGroups = await _context.VwGroups
+                    .Where(g => g.IsDeleted1 == false && g.EventSend1 > now)
+                    .ToListAsync();
+
+                foreach (var group in recentlyCompletedGroups)
+                {
+                    int required = int.TryParse(group.Gqty, out var gqtyParsed) ? gqtyParsed : 0;
+                    int joined = await _context.TblGroupjoins
+                        .CountAsync(j => j.Groupid == group.Gid && !j.IsDeleted && j.IsActive == true);
+
+                    if (joined >= required) // Group completed
+                    {
+                        var groupMembers = await _context.TblGroupjoins
+                            .Where(j => j.Groupid == group.Gid && !j.IsDeleted && j.IsActive == true)
+                            .Select(j => j.Userid)
+                            .Where(id => id.HasValue)
+                            .Select(id => (int)id.Value)
+                            .ToListAsync();
+
+                        foreach (var memberId in groupMembers)
+                        {
+                            var alreadySent = await _context.TblNotifications
+                                .AnyAsync(n => n.UserId == memberId &&
+                                              n.Message.Contains("Group completed") &&
+                                              n.AddedDate >= DateTime.UtcNow.AddHours(-2));
+
+                            if (!alreadySent)
+                            {
+                                await SendGroupCompletedNotification(memberId, group.Gid);
+                            }
+                        }
+                    }
+                }
+
+                // ❌ Process expired groups
+                var expiredGroups = await _context.VwGroups
+                    .Where(g => g.IsDeleted1 == false &&
+                               g.EventSend1 <= now &&
+                               g.EventSend1 >= now.AddHours(-24)) // Last 24 hours
+                    .ToListAsync();
+
+                foreach (var group in expiredGroups)
+                {
+                    var groupMembers = await _context.TblGroupjoins
+                        .Where(j => j.Groupid == group.Gid && !j.IsDeleted)
+                        .Select(j => j.Userid)
+                        .Where(id => id.HasValue)
+                        .Select(id => (int)id.Value)
+                        .ToListAsync();
+
+                    foreach (var memberId in groupMembers)
+                    {
+                        var alreadySent = await _context.TblNotifications
+                            .AnyAsync(n => n.UserId == memberId &&
+                                          n.Message.Contains("group deal expired") &&
+                                          n.AddedDate >= DateTime.UtcNow.AddHours(-12));
+
+                        if (!alreadySent)
+                        {
+                            await SendGroupExpiredNotification(memberId, group.Gid);
+                        }
+                    }
+                }
+
+                _logger.LogInformation("Group status notifications processed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing group status notifications");
+                throw;
+            }
+        }
+
+        // 📦 Enhanced Order Status Notifications
+        [AutomaticRetry(Attempts = 3)]
+        public async Task ProcessEnhancedOrderNotifications()
+        {
+            try
+            {
+                _logger.LogInformation("Starting enhanced order notification processing");
+
+                // 🚚 Order status changes
+                var recentOrders = await _context.TblOrdernows
+                    .Where(o => !o.IsDeleted && o.AddedDate >= DateTime.UtcNow.AddDays(-7))
+                    .ToListAsync();
+
+                foreach (var order in recentOrders)
+                {
+                    var orderStatus = GetOrderStatus(order);
+
+                    var alreadySent = await _context.TblNotifications
+                        .AnyAsync(n => n.UserId == order.Userid &&
+                                      n.Message.Contains(order.TrackId) &&
+                                      n.Title.Contains(orderStatus) &&
+                                      n.AddedDate >= DateTime.UtcNow.AddHours(-2));
+
+                    if (!alreadySent)
+                    {
+                        await SendOrderStatusUpdateNotification((int)order.Userid, order.TrackId, orderStatus);
+                    }
+                }
+
+                // ❌ Cancelled orders (need reorder suggestions)
+                var cancelledOrders = await _context.TblOrdernows
+                    .Where(o => o.IsDeleted && o.ModifiedDate >= DateTime.UtcNow.AddHours(-6))
+                    .ToListAsync();
+
+                foreach (var order in cancelledOrders)
+                {
+                    var alreadySent = await _context.TblNotifications
+                        .AnyAsync(n => n.UserId == order.Userid &&
+                                      n.Message.Contains("cancelled") &&
+                                      n.AddedDate >= DateTime.UtcNow.AddHours(-3));
+
+                    if (!alreadySent)
+                    {
+                        await SendOrderCancelledNotification((int)order.Userid, order.TrackId);
+                    }
+                }
+
+                // 🎯 Group order status updates
+                var groupOrders = await _context.TblOrdernows
+                    .Where(o => !o.IsDeleted && o.Groupid != null && o.AddedDate >= DateTime.UtcNow.AddDays(-3))
+                    .ToListAsync();
+
+                foreach (var order in groupOrders)
+                {
+                    var groupStatus = GetGroupOrderStatus(order.Groupid.Value);
+
+                    if (groupStatus == "expired" || groupStatus == "completed")
+                    {
+                        var alreadySent = await _context.TblNotifications
+                            .AnyAsync(n => n.UserId == order.Userid &&
+                                          n.Message.Contains(order.TrackId) &&
+                                          n.Message.Contains(groupStatus) &&
+                                          n.AddedDate >= DateTime.UtcNow.AddHours(-4));
+
+                        if (!alreadySent)
+                        {
+                            await SendGroupOrderStatusNotification((int)order.Userid, order.TrackId, groupStatus);
+                        }
+                    }
+                }
+
+                _logger.LogInformation("Enhanced order notifications processed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing enhanced order notifications");
+                throw;
+            }
+        }
+
+        // Helper methods for order status
+        private string GetOrderStatus(TblOrdernow order)
+        {
+            return order.DdeliverredidTime != null ? "Delivered"
+                 : order.ShipOrderidTime != null ? "Shipped"
+                 : order.DvendorpickupTime != null ? "Picked Up"
+                 : order.DassignidTime != null ? "Assigned"
+                 : "Placed";
+        }
+
+        private string GetGroupOrderStatus(long groupId)
+        {
+            var group = _context.VwGroups.FirstOrDefault(g => g.Gid == groupId && g.IsDeleted == false);
+            if (group == null) return "expired";
+
+            bool isExpired = group.EventSend1 <= DateTime.UtcNow;
+
+            int required = int.TryParse(group.Gqty, out var qty) ? qty : 0;
+            int joined = _context.TblGroupjoins
+                .Count(j => j.Groupid == groupId && !j.IsDeleted && j.IsActive == true);
+
+            if (isExpired && joined < required) return "expired";
+            if (joined >= required) return "completed";
+            return "pending";
+        }
+
+        // 🎉 Notification sending methods with emotions
+        private async Task SendGroupAlmostCompleteNotification(int userId, long groupId, int remaining)
+        {
+            var title = "🔥 Group Deal Almost Complete!";
+            var message = remaining == 1
+                ? "Just 1 more friend needed! 🤝 Share now to unlock your amazing deal!"
+                : $"Only {remaining} more members needed! 🚀 Invite friends and save together!";
+
+            await CreateAndSendNotification(userId, title, message, "group_almost_complete");
+        }
+
+        private async Task SendGroupExpiringNotification(int userId, long groupId, int hoursLeft)
+        {
+            var title = "⏰ Group Deal Ending Soon!";
+            var message = hoursLeft == 1
+                ? "Last hour! ⚡ Share urgently or you'll miss this deal forever! 😱"
+                : $"Only {hoursLeft} hours left! ⏳ Don't let this amazing deal slip away! Share now! 💪";
+
+            await CreateAndSendNotification(userId, title, message, "group_expiring");
+        }
+
+        private async Task SendGroupCompletedNotification(int userId, long groupId)
+        {
+            var title = "🎉 Amazing! Group Deal Completed!";
+            var message = "Congratulations! 🥳 Your group deal is now complete and being processed! You're getting the best price! 💰✨";
+
+            await CreateAndSendNotification(userId, title, message, "group_completed");
+        }
+
+        private async Task SendGroupExpiredNotification(int userId, long groupId)
+        {
+            var title = "😔 Group Deal Expired";
+            var message = "Unfortunately, your group deal didn't complete in time. 💔 But don't worry! You can still order individually! 🛒";
+
+            await CreateAndSendNotification(userId, title, message, "group_expired");
+        }
+
+        private async Task SendOrderStatusUpdateNotification(int userId, string trackId, string status)
+        {
+            var (title, message) = status switch
+            {
+                "Delivered" => ("🎉 Order Delivered!", $"Hooray! 🥳 Your order {trackId} has been delivered! Enjoy your purchase! ❤️"),
+                "Shipped" => ("🚚 Order Shipped!", $"Great news! 📦 Your order {trackId} is on its way to you! Track it closely! 👀"),
+                "Picked Up" => ("📦 Order Picked Up!", $"Your order {trackId} has been picked up! 🚀 It's now on the road to you!"),
+                "Assigned" => ("👨‍💼 Order Assigned!", $"Good news! 😊 Your order {trackId} has been assigned for processing!"),
+                _ => ("📋 Order Update", $"Your order {trackId} status has been updated to {status}! 📱")
+            };
+
+            await CreateAndSendNotification(userId, title, message, "order_status");
+        }
+
+        private async Task SendOrderCancelledNotification(int userId, string trackId)
+        {
+            var title = "😞 Order Cancelled";
+            var message = $"Your order {trackId} has been cancelled. 💔 Don't worry! You can easily reorder the same items! 🔄 We're here to help! 💪";
+
+            await CreateAndSendNotification(userId, title, message, "order_cancelled");
+        }
+
+        private async Task SendGroupOrderStatusNotification(int userId, string trackId, string groupStatus)
+        {
+            var (title, message) = groupStatus switch
+            {
+                "completed" => ("🎉 Group Order Processing!", $"Fantastic! 🥳 Your group order {trackId} is now being processed! Group deal successful! 🎊"),
+                "expired" => ("😔 Group Order Failed", $"Sorry! 💔 Your group order {trackId} expired. But you can still reorder individually! 🛒 Don't give up! 💪"),
+                _ => ("📦 Group Order Update", $"Your group order {trackId} status: {groupStatus} 📱")
+            };
+
+            await CreateAndSendNotification(userId, title, message, "group_order_status");
+        }
+
+        // 🤝 Share encouragement notifications
+        private async Task SendShareEncouragementNotification(int userId, long groupId, int remaining)
+        {
+            var title = "🤝 Help Your Friends Save Too!";
+            var message = remaining == 1
+                ? "You're SO close! 🎯 Just 1 more friend and everyone saves! Share the love! ❤️"
+                : $"Invite {remaining} friends to join! 👥 Everyone wins when we shop together! 🎁";
+
+            await CreateAndSendNotification(userId, title, message, "share_encouragement");
+        }
 
         // Notification sending methods
         private async Task SendCartAbandonmentNotification(int userId, int itemCount, decimal totalValue)
@@ -606,12 +950,6 @@ namespace ArimartEcommerceAPI.Services.Services
             await CreateAndSendNotification(groupCreatorId, title, message, "group_join");
         }
 
-        private async Task SendGroupAlmostCompleteNotification(int userId, long groupId, int remaining)
-        {
-            var title = "🔥 Group deal almost complete!";
-            var message = $"Only {remaining} more member(s) needed! Share with friends to unlock the deal.";
-            await CreateAndSendNotification(userId, title, message, "group_almost_complete");
-        }
 
         private async Task SendRecommendationNotification(int userId, List<VwProduct> recommendations)
         {
